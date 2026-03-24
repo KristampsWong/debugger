@@ -65,4 +65,34 @@ describe('Shop', () => {
     )
     expect(screen.getByText('Owned')).toBeInTheDocument()
   })
+
+  it('shows "each" for consumable items', () => {
+    render(
+      <MemoryRouter>
+        <Shop />
+      </MemoryRouter>
+    )
+    expect(screen.getByText(/each/)).toBeInTheDocument()
+  })
+
+  it('renders back to board link', () => {
+    render(
+      <MemoryRouter>
+        <Shop />
+      </MemoryRouter>
+    )
+    expect(screen.getByRole('link', { name: /back to board/i })).toBeInTheDocument()
+  })
+
+  it('deducts money after purchase', async () => {
+    useGameStore.getState().completeLevel('level-01', 500, 30)
+    render(
+      <MemoryRouter>
+        <Shop />
+      </MemoryRouter>
+    )
+    const buyButtons = screen.getAllByRole('button', { name: /buy/i })
+    await userEvent.click(buyButtons[0])
+    expect(useGameStore.getState().money).toBeLessThan(500)
+  })
 })
