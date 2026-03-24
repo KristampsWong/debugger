@@ -22,6 +22,10 @@ Migrate the CSS Debugger game from hand-written CSS with custom dark theme to sh
 - Auto-updater (Steam handles updates)
 - Redesigning game mechanics or adding features
 
+## Pre-Implementation Verification
+
+- Verify `@radix-ui/react-dialog` compatibility with React 19.2 before starting. shadcn's `Dialog` depends on Radix UI primitives. If incompatible, fall back to a custom modal using Tailwind classes instead of the shadcn Dialog component.
+
 ---
 
 ## Part 1: shadcn/ui Migration
@@ -40,7 +44,7 @@ Migrate the CSS Debugger game from hand-written CSS with custom dark theme to sh
 
 **Installed via shadcn CLI:**
 - `npx shadcn@latest init` — scaffolds `components/ui/`, `lib/utils.ts`, CSS variables
-- `npx shadcn@latest add button card dialog badge separator tooltip`
+- `npx shadcn@latest add button card dialog badge`
 
 ### Theme
 
@@ -65,10 +69,14 @@ Migrate the CSS Debugger game from hand-written CSS with custom dark theme to sh
 
 ### CSS Cleanup
 
-- All component styles removed from `index.css`
+- All component styles removed from `index.css` **except** `.bug-gutter-icon` — this class is passed to Monaco Editor's `glyphMarginClassName` API and cannot be replaced with Tailwind utilities since Monaco controls that DOM
 - `App.css` deleted
 - All styling moves to Tailwind utility classes inline in components
 - Minimal global reset kept (shadcn provides its own base styles)
+
+### Tailwind v4 Configuration
+
+Tailwind CSS v4 uses CSS-first configuration via `@theme` directives instead of `tailwind.config.js`. shadcn's `init` CLI generates the appropriate CSS with `@theme` blocks for the color tokens. No separate `tailwind.config.ts` file is needed.
 
 ---
 
@@ -79,6 +87,7 @@ Migrate the CSS Debugger game from hand-written CSS with custom dark theme to sh
 **New dev dependencies:**
 - `electron`
 - `electron-builder`
+- `concurrently` (cross-platform parallel script runner)
 - `wait-on` (for dev script coordination)
 
 ### File Structure
@@ -89,25 +98,37 @@ electron/
   preload.ts    — Empty preload script (placeholder for future Steamworks)
 ```
 
+### Electron TypeScript Compilation
+
+Electron cannot execute `.ts` files directly. The main process files (`electron/main.ts`, `electron/preload.ts`) must be compiled to JavaScript before Electron can load them. Use `tsc` with a dedicated `tsconfig.electron.json` that outputs to `electron/dist/`. The `"main"` field in `package.json` points to `electron/dist/main.js`.
+
 ### Behavior
 
 - **Dev mode:** Electron loads `http://localhost:5173` (Vite dev server)
 - **Production:** Electron loads `dist/index.html` via `file://` protocol
 - **Window:** ~1200x800 default, resizable, dark background color
 
+### Routing: HashRouter Required
+
+The app must switch from `BrowserRouter` to `HashRouter` in `App.tsx`. `BrowserRouter` relies on the HTML5 History API which does not work with Electron's `file://` protocol in production. `HashRouter` uses `#`-based URLs that work in both browser and Electron contexts.
+
+### Content Security Policy
+
+Add a reasonable CSP meta tag in `index.html` since the app uses `iframe srcdoc` for live preview. The CSP must allow `blob:` and `srcdoc` iframes to continue working in Electron's `file://` context.
+
 ### npm Scripts
 
 ```json
-"electron:dev": "vite & wait-on http://localhost:5173 && electron .",
-"electron:build": "tsc -b && vite build && electron-builder",
-"electron:preview": "vite build && electron ."
+"electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+"electron:build": "tsc -b && vite build && tsc -p tsconfig.electron.json && electron-builder",
+"electron:preview": "vite build && tsc -p tsconfig.electron.json && electron ."
 ```
 
 ### electron-builder Config
 
 - Targets: macOS `.dmg`, Windows `.exe` (NSIS), Linux `.AppImage`
 - App ID: `com.debugger.game`
-- Files: `dist/**/*`, `electron/**/*`
+- Files: `dist/**/*`, `electron/dist/**/*`, `package.json`
 - No code signing (Steam handles DRM)
 
 ---
@@ -124,15 +145,34 @@ electron/
 ### `tsconfig.node.json`
 - Add `electron/` to includes
 
+### `tsconfig.electron.json` (new)
+- Compiles `electron/*.ts` to `electron/dist/*.js`
+- Target: ES2023, module: CommonJS (Electron main process uses CJS)
+
 ### `package.json`
-- Add `"main": "electron/main.js"` for Electron entry point
+- Add `"main": "electron/dist/main.js"` for Electron entry point
 - Add electron scripts
 - Add electron-builder build config
 
-### Test Updates
-- Unit tests querying by BEM class names (`.level-card`, `.test-item`, etc.) will break
-- Update test selectors to use `getByRole`/`getByText` queries (better practice)
-- Playwright e2e test selectors need corresponding updates
+### `App.tsx`
+- Switch `BrowserRouter` to `HashRouter` for Electron `file://` compatibility
+
+### Test Migration Plan
+
+The shadcn migration breaks all tests that query by BEM class names. The scope is significant:
+
+**Unit tests (Vitest + Testing Library):**
+- `ClientBoard.test.tsx`: ~15 selectors (`.level-card`, `.money`, `.start-btn`, `.locked-label`, `.difficulty`, `.payout`)
+- `Mission.test.tsx`: ~5 selectors (`.test-panel`, `.client-brief`)
+- `TestPanel.test.tsx`: `toHaveClass('passed')`, `toHaveClass('failed')` assertions
+- `ClientBrief.test.tsx`: `.hint-text` selector
+- `Shop.test.tsx`: class-based selectors throughout
+- `MainMenu.test.tsx`: `.menu-btn`, `.subtitle` selectors
+
+**Playwright e2e tests (5 spec files, 100+ selectors total):**
+- `main-menu.spec.ts`, `client-board.spec.ts`, `mission.spec.ts`, `shop.spec.ts`, `full-flow.spec.ts`
+
+**Strategy:** Add `data-testid` attributes to key elements for stable test selectors. Use `getByRole`/`getByText` where semantic queries suffice. Use `data-testid` for structural queries (e.g., finding a specific level card). Update Playwright selectors to match.
 
 ### Files Deleted
 - `src/App.css`
@@ -142,10 +182,19 @@ electron/
 
 ## Implementation Order
 
-1. Install Tailwind v4 + shadcn/ui, configure theme
-2. Migrate all components/screens to shadcn (all at once)
-3. Delete legacy CSS
-4. Update unit tests and e2e tests for new selectors
-5. Add Electron shell (`electron/main.ts`, `electron/preload.ts`)
-6. Configure electron-builder
-7. Verify dev mode and production build in Electron
+1. Verify Radix UI + React 19.2 compatibility
+2. Install Tailwind v4 + shadcn/ui, configure theme
+3. Migrate components/screens to shadcn (one screen at a time):
+   - 3a. MainMenu (simplest, validates setup)
+   - 3b. ClientBoard + level cards
+   - 3c. Shop
+   - 3d. Mission + CodeEditor + LivePreview + TestPanel + ClientBrief
+   - 3e. LevelCompleteModal → shadcn Dialog
+4. Delete legacy CSS (keep `.bug-gutter-icon`)
+5. Switch `BrowserRouter` to `HashRouter`
+6. Update unit tests (add `data-testid`, switch to role/text queries)
+7. Update Playwright e2e tests
+8. Add Electron shell (`electron/main.ts`, `electron/preload.ts`, `tsconfig.electron.json`)
+9. Configure electron-builder + npm scripts
+10. Add CSP meta tag to `index.html`
+11. Verify dev mode and production build in Electron
