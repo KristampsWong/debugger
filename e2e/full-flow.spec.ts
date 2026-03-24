@@ -44,16 +44,13 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('full flow: new game → complete level 1 → earn money → buy tool → use tool', async ({ page }) => {
-  // Start new game
   await page.click('text=New Game');
-  await expect(page).toHaveURL(/\/board/);
-  await expect(page.locator('.money')).toHaveText('$0');
+  await expect(page).toHaveURL(/#\/board/);
+  await expect(page.getByTestId('money')).toHaveText('$0');
 
-  // Level 1 should be unlocked, level 2 locked
-  await expect(page.locator('.level-card').first()).not.toHaveClass(/locked/);
-  await expect(page.locator('.level-card').nth(1)).toHaveClass(/locked/);
+  await expect(page.getByTestId('level-card').first()).not.toHaveClass(/opacity-50/);
+  await expect(page.getByTestId('level-card').nth(1)).toHaveClass(/opacity-50/);
 
-  // Enter level 1 with pre-loaded solution
   await seedSave(page, {
     money: 0,
     completedLevels: [],
@@ -61,40 +58,33 @@ test('full flow: new game → complete level 1 → earn money → buy tool → u
     inProgressCSS: { 'level-01': LEVEL_01_SOLUTION },
     bestTimes: {},
   });
-  await page.goto('/mission/level-01');
+  await page.goto('/#/mission/level-01');
   await page.waitForTimeout(1500);
 
-  // All tests should pass
-  await expect(page.locator('.test-item.passed')).toHaveCount(2);
+  await expect(page.locator('[data-testid="test-item"][data-status="passed"]')).toHaveCount(2);
 
-  // Submit
-  await page.locator('.submit-btn').click();
-  await expect(page.locator('.modal h2')).toHaveText('Level Complete!');
-  await expect(page.locator('.payout')).toHaveText('+$100');
+  await page.getByRole('button', { name: 'Submit' }).click();
+  await expect(page.getByText('Level Complete!')).toBeVisible();
+  await expect(page.getByTestId('payout')).toHaveText('+$100');
 
-  // Go back to board
-  await page.locator('.modal-btn', { hasText: 'Back to Board' }).click();
-  await expect(page).toHaveURL(/\/board/);
-  await expect(page.locator('.money')).toHaveText('$100');
+  await page.getByRole('link', { name: 'Back to Board' }).click();
+  await expect(page).toHaveURL(/#\/board/);
+  await expect(page.getByTestId('money')).toHaveText('$100');
 
-  // Level 1 completed, level 2 now unlocked
-  await expect(page.locator('.level-card').first()).toHaveClass(/completed/);
-  await expect(page.locator('.level-card').nth(1)).not.toHaveClass(/locked/);
+  await expect(page.getByTestId('level-card').first()).toHaveClass(/border-green-500/);
+  await expect(page.getByTestId('level-card').nth(1)).not.toHaveClass(/opacity-50/);
 
-  // Go to shop and buy Syntax Highlighter+ ($50)
-  await page.locator('.shop-link').click();
-  await expect(page).toHaveURL(/\/shop/);
-  await page.locator('.shop-card').first().locator('.buy-btn').click();
-  await expect(page.locator('.money')).toHaveText('$50');
-  await expect(page.locator('.shop-card').first().locator('.owned-label')).toBeVisible();
+  await page.getByRole('link', { name: 'Shop' }).click();
+  await expect(page).toHaveURL(/#\/shop/);
+  await page.getByTestId('shop-card').first().getByRole('button', { name: 'Buy' }).click();
+  await expect(page.getByTestId('money')).toHaveText('$50');
+  await expect(page.getByTestId('shop-card').first().getByTestId('owned-label')).toBeVisible();
 
-  // Go back to board
-  await page.locator('.back-link').click();
-  await expect(page).toHaveURL(/\/board/);
+  await page.getByRole('link', { name: 'Back to Board' }).click();
+  await expect(page).toHaveURL(/#\/board/);
 });
 
 test('state persists across page reload', async ({ page }) => {
-  // Set up game state
   await seedSave(page, {
     money: 250,
     completedLevels: ['level-01', 'level-02'],
@@ -103,24 +93,20 @@ test('state persists across page reload', async ({ page }) => {
     bestTimes: { 'level-01': 15, 'level-02': 30 },
   });
 
-  // Navigate to board and verify
-  await page.goto('/board');
-  await expect(page.locator('.money')).toHaveText('$250');
-  await expect(page.locator('.level-card').first()).toHaveClass(/completed/);
-  await expect(page.locator('.level-card').nth(1)).toHaveClass(/completed/);
+  await page.goto('/#/board');
+  await expect(page.getByTestId('money')).toHaveText('$250');
+  await expect(page.getByTestId('level-card').first()).toHaveClass(/border-green-500/);
+  await expect(page.getByTestId('level-card').nth(1)).toHaveClass(/border-green-500/);
 
-  // Reload page - state should persist
   await page.reload();
-  await expect(page.locator('.money')).toHaveText('$250');
-  await expect(page.locator('.level-card').first()).toHaveClass(/completed/);
+  await expect(page.getByTestId('money')).toHaveText('$250');
+  await expect(page.getByTestId('level-card').first()).toHaveClass(/border-green-500/);
 
-  // Check shop reflects owned tool
-  await page.locator('.shop-link').click();
-  await expect(page.locator('.shop-card').first().locator('.owned-label')).toBeVisible();
+  await page.getByRole('link', { name: 'Shop' }).click();
+  await expect(page.getByTestId('shop-card').first().getByTestId('owned-label')).toBeVisible();
 });
 
 test('new game clears all saved progress', async ({ page }) => {
-  // Set up existing progress
   await seedSave(page, {
     money: 500,
     completedLevels: ['level-01', 'level-02', 'level-03'],
@@ -129,21 +115,18 @@ test('new game clears all saved progress', async ({ page }) => {
     bestTimes: { 'level-01': 10 },
   });
 
-  // Go to main menu and click New Game
   await page.goto('/');
-  const continueBtn = page.locator('.menu-btn', { hasText: 'Continue' });
-  await expect(continueBtn).not.toHaveClass(/disabled/);
+  const continueBtn = page.getByRole('link', { name: 'Continue' });
+  await expect(continueBtn).not.toHaveAttribute('aria-disabled', 'true');
 
   await page.click('text=New Game');
-  await expect(page.locator('.money')).toHaveText('$0');
+  await expect(page.getByTestId('money')).toHaveText('$0');
 
-  // All levels except level 1 should be locked
-  await expect(page.locator('.level-card').first()).not.toHaveClass(/locked/);
-  await expect(page.locator('.level-card').first()).not.toHaveClass(/completed/);
-  await expect(page.locator('.level-card').nth(1)).toHaveClass(/locked/);
-  await expect(page.locator('.level-card').nth(2)).toHaveClass(/locked/);
+  await expect(page.getByTestId('level-card').first()).not.toHaveClass(/opacity-50/);
+  await expect(page.getByTestId('level-card').first()).not.toHaveClass(/border-green-500/);
+  await expect(page.getByTestId('level-card').nth(1)).toHaveClass(/opacity-50/);
+  await expect(page.getByTestId('level-card').nth(2)).toHaveClass(/opacity-50/);
 
-  // Shop should have no owned tools
-  await page.locator('.shop-link').click();
-  await expect(page.locator('.owned-label')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Shop' }).click();
+  await expect(page.getByTestId('owned-label')).toHaveCount(0);
 });

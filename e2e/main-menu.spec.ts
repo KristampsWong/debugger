@@ -12,26 +12,25 @@ test.beforeEach(async ({ page }) => {
 
 test('displays game title and subtitle', async ({ page }) => {
   await expect(page.locator('h1')).toHaveText('Debugger');
-  await expect(page.locator('.subtitle')).toHaveText('Fix bugs. Get paid. Buy better tools.');
+  await expect(page.getByText('Fix bugs. Get paid. Buy better tools.')).toBeVisible();
 });
 
 test('shows New Game and Continue buttons', async ({ page }) => {
-  await expect(page.locator('text=New Game')).toBeVisible();
-  await expect(page.locator('text=Continue')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'New Game' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Continue' })).toBeVisible();
 });
 
 test('Continue button is disabled when no save exists', async ({ page }) => {
-  const continueBtn = page.locator('.menu-btn', { hasText: 'Continue' });
-  await expect(continueBtn).toHaveClass(/disabled/);
+  const continueBtn = page.getByRole('link', { name: 'Continue' });
+  await expect(continueBtn).toHaveAttribute('aria-disabled', 'true');
 });
 
 test('New Game navigates to board', async ({ page }) => {
-  await page.click('text=New Game');
-  await expect(page).toHaveURL(/\/board/);
+  await page.getByRole('link', { name: 'New Game' }).click();
+  await expect(page).toHaveURL(/#\/board/);
 });
 
 test('New Game resets game state', async ({ page }) => {
-  // Seed a save with money
   await page.evaluate(() => {
     localStorage.setItem('debugger-game-save', JSON.stringify({
       state: { money: 500, completedLevels: ['level-01'], ownedTools: [], inProgressCSS: {}, bestTimes: {} },
@@ -39,12 +38,8 @@ test('New Game resets game state', async ({ page }) => {
     }));
   });
   await page.reload();
-
-  // Click New Game
-  await page.click('text=New Game');
-
-  // Money should be reset to 0
-  await expect(page.locator('.money')).toHaveText('$0');
+  await page.getByRole('link', { name: 'New Game' }).click();
+  await expect(page.getByTestId('money')).toHaveText('$0');
 });
 
 test('Continue button enabled when save exists', async ({ page }) => {
@@ -55,9 +50,8 @@ test('Continue button enabled when save exists', async ({ page }) => {
     }));
   });
   await page.reload();
-
-  const continueBtn = page.locator('.menu-btn', { hasText: 'Continue' });
-  await expect(continueBtn).not.toHaveClass(/disabled/);
+  const continueBtn = page.getByRole('link', { name: 'Continue' });
+  await expect(continueBtn).not.toHaveAttribute('aria-disabled', 'true');
 });
 
 test('Continue preserves game state', async ({ page }) => {
@@ -68,8 +62,7 @@ test('Continue preserves game state', async ({ page }) => {
     }));
   });
   await page.reload();
-
-  await page.click('text=Continue');
-  await expect(page).toHaveURL(/\/board/);
-  await expect(page.locator('.money')).toHaveText('$250');
+  await page.getByRole('link', { name: 'Continue' }).click();
+  await expect(page).toHaveURL(/#\/board/);
+  await expect(page.getByTestId('money')).toHaveText('$250');
 });

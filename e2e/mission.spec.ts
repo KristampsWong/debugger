@@ -9,62 +9,61 @@ async function seedSave(page: Page, state: Record<string, unknown>) {
 async function resetAndGoToLevel1(page: Page) {
   await page.goto('/');
   await page.evaluate(() => localStorage.removeItem('debugger-game-save'));
-  await page.goto('/mission/level-01');
+  await page.goto('/#/mission/level-01');
 }
 
 test.describe('Mission - Loading', () => {
   test('redirects to board for nonexistent level', async ({ page }) => {
-    await page.goto('/mission/level-99');
-    await expect(page).toHaveURL(/\/board/);
+    await page.goto('/#/mission/level-99');
+    await expect(page).toHaveURL(/#\/board/);
   });
 
   test('redirects to board when prerequisites not met', async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => localStorage.removeItem('debugger-game-save'));
-    await page.goto('/mission/level-02');
-    await expect(page).toHaveURL(/\/board/);
+    await page.goto('/#/mission/level-02');
+    await expect(page).toHaveURL(/#\/board/);
   });
 
   test('loads level 1 successfully', async ({ page }) => {
     await resetAndGoToLevel1(page);
-    await expect(page.locator('.mission-screen')).toBeVisible();
-    await expect(page.locator('.client-name')).toHaveText("Bob's Bakery");
+    await expect(page.getByTestId('mission-screen')).toBeVisible();
+    await expect(page.getByText("Bob's Bakery")).toBeVisible();
   });
 
   test('shows client brief', async ({ page }) => {
     await resetAndGoToLevel1(page);
-    await expect(page.locator('.brief-text')).toContainText('text colors are all wrong');
+    await expect(page.getByTestId('client-brief')).toContainText('text colors are all wrong');
   });
 
   test('timer starts at 0:00', async ({ page }) => {
     await resetAndGoToLevel1(page);
-    await expect(page.locator('.timer')).toHaveText('0:00');
+    await expect(page.getByTestId('timer')).toHaveText('0:00');
   });
 
   test('submit button is disabled initially', async ({ page }) => {
     await resetAndGoToLevel1(page);
-    await expect(page.locator('.submit-btn')).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Submit' })).toBeDisabled();
   });
 });
 
 test.describe('Mission - Test Panel', () => {
   test('shows test descriptions', async ({ page }) => {
     await resetAndGoToLevel1(page);
-    await expect(page.locator('.test-item')).toHaveCount(2);
-    await expect(page.locator('.test-description').first()).toContainText('Title text should be visible');
-    await expect(page.locator('.test-description').nth(1)).toContainText('Menu items should be readable');
+    await expect(page.getByTestId('test-item')).toHaveCount(2);
+    await expect(page.getByTestId('test-description').first()).toContainText('Title text should be visible');
+    await expect(page.getByTestId('test-description').nth(1)).toContainText('Menu items should be readable');
   });
 
   test('tests show failed status with buggy CSS', async ({ page }) => {
     await resetAndGoToLevel1(page);
-    // Wait for iframe and tests to run
     await page.waitForTimeout(1000);
-    await expect(page.locator('.test-item.failed')).toHaveCount(2);
+    await expect(page.locator('[data-testid="test-item"][data-status="failed"]')).toHaveCount(2);
   });
 
   test('property hints hidden without tool', async ({ page }) => {
     await resetAndGoToLevel1(page);
-    await expect(page.locator('.test-hints')).toHaveCount(0);
+    await expect(page.getByTestId('test-hints')).toHaveCount(0);
   });
 
   test('property hints visible with property-hint tool', async ({ page }) => {
@@ -72,17 +71,17 @@ test.describe('Mission - Test Panel', () => {
     await seedSave(page, {
       money: 0, completedLevels: [], ownedTools: ['property-hint'], inProgressCSS: {}, bestTimes: {},
     });
-    await page.goto('/mission/level-01');
+    await page.goto('/#/mission/level-01');
 
-    await expect(page.locator('.test-hints').first()).toBeVisible();
-    await expect(page.locator('.test-hints').first()).toContainText('color');
+    await expect(page.getByTestId('test-hints').first()).toBeVisible();
+    await expect(page.getByTestId('test-hints').first()).toContainText('color');
   });
 });
 
 test.describe('Mission - Client Brief & Tools', () => {
   test('hint is hidden without client-call tool', async ({ page }) => {
     await resetAndGoToLevel1(page);
-    await expect(page.locator('.hint-text')).toHaveCount(0);
+    await expect(page.getByTestId('hint-text')).toHaveCount(0);
   });
 
   test('hint is visible with client-call tool', async ({ page }) => {
@@ -90,20 +89,19 @@ test.describe('Mission - Client Brief & Tools', () => {
     await seedSave(page, {
       money: 0, completedLevels: [], ownedTools: ['client-call'], inProgressCSS: {}, bestTimes: {},
     });
-    await page.goto('/mission/level-01');
+    await page.goto('/#/mission/level-01');
 
-    await expect(page.locator('.hint-text')).toBeVisible();
-    await expect(page.locator('.hint-text')).toContainText('heading and the menu items');
+    await expect(page.getByTestId('hint-text')).toBeVisible();
+    await expect(page.getByTestId('hint-text')).toContainText('heading and the menu items');
   });
 });
 
 test.describe('Mission - Timer', () => {
   test('timer increments over time', async ({ page }) => {
     await resetAndGoToLevel1(page);
-    await expect(page.locator('.timer')).toHaveText('0:00');
-    // Wait >2 seconds for timer to tick
+    await expect(page.getByTestId('timer')).toHaveText('0:00');
     await page.waitForTimeout(2500);
-    const timerText = await page.locator('.timer').textContent();
+    const timerText = await page.getByTestId('timer').textContent();
     expect(timerText).not.toBe('0:00');
   });
 });
@@ -119,7 +117,6 @@ test.describe('Mission - Gameplay', () => {
     await page.goto('/');
     await page.evaluate(() => localStorage.removeItem('debugger-game-save'));
 
-    // Seed in-progress CSS with the solution
     const solutionCSS = `.bakery {
   font-family: Georgia, serif;
   max-width: 400px;
@@ -160,16 +157,11 @@ test.describe('Mission - Gameplay', () => {
       bestTimes: {},
     });
 
-    await page.goto('/mission/level-01');
-
-    // Wait for iframe to load and tests to run
+    await page.goto('/#/mission/level-01');
     await page.waitForTimeout(1500);
 
-    // Tests should all pass
-    await expect(page.locator('.test-item.passed')).toHaveCount(2);
-
-    // Submit should be enabled
-    await expect(page.locator('.submit-btn')).toBeEnabled();
+    await expect(page.locator('[data-testid="test-item"][data-status="passed"]')).toHaveCount(2);
+    await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled();
   });
 
   test('submitting completed level shows modal', async ({ page }) => {
@@ -216,16 +208,15 @@ test.describe('Mission - Gameplay', () => {
       bestTimes: {},
     });
 
-    await page.goto('/mission/level-01');
+    await page.goto('/#/mission/level-01');
     await page.waitForTimeout(1500);
 
-    await page.locator('.submit-btn').click();
+    await page.getByRole('button', { name: 'Submit' }).click();
 
-    // Modal should appear
-    await expect(page.locator('.modal-overlay')).toBeVisible();
-    await expect(page.locator('.modal h2')).toHaveText('Level Complete!');
-    await expect(page.locator('.payout')).toHaveText('+$100');
-    await expect(page.locator('.client-message')).toContainText("Bob's Bakery");
+    await expect(page.getByTestId('level-complete-modal')).toBeVisible();
+    await expect(page.getByText('Level Complete!')).toBeVisible();
+    await expect(page.getByTestId('payout')).toHaveText('+$100');
+    await expect(page.getByText("Bob's Bakery:")).toBeVisible();
   });
 
   test('completing level awards money (first time only)', async ({ page }) => {
@@ -272,13 +263,12 @@ test.describe('Mission - Gameplay', () => {
       bestTimes: {},
     });
 
-    await page.goto('/mission/level-01');
+    await page.goto('/#/mission/level-01');
     await page.waitForTimeout(1500);
-    await page.locator('.submit-btn').click();
+    await page.getByRole('button', { name: 'Submit' }).click();
 
-    // Navigate back to board - money should be $100
-    await page.locator('.modal-btn', { hasText: 'Back to Board' }).click();
-    await expect(page.locator('.money')).toHaveText('$100');
+    await page.getByRole('link', { name: 'Back to Board' }).click();
+    await expect(page.getByTestId('money')).toHaveText('$100');
   });
 
   test('replaying completed level shows already completed message', async ({ page }) => {
@@ -324,13 +314,12 @@ test.describe('Mission - Gameplay', () => {
       bestTimes: { 'level-01': 10 },
     });
 
-    await page.goto('/mission/level-01');
+    await page.goto('/#/mission/level-01');
     await page.waitForTimeout(1500);
-    await page.locator('.submit-btn').click();
+    await page.getByRole('button', { name: 'Submit' }).click();
 
-    await expect(page.locator('.already-completed')).toHaveText('Already completed');
-    // No payout element
-    await expect(page.locator('.payout')).toHaveCount(0);
+    await expect(page.getByTestId('already-completed')).toHaveText('Already completed');
+    await expect(page.getByTestId('payout')).toHaveCount(0);
   });
 
   test('modal replay button resets the level', async ({ page }) => {
@@ -377,17 +366,14 @@ test.describe('Mission - Gameplay', () => {
       bestTimes: {},
     });
 
-    await page.goto('/mission/level-01');
+    await page.goto('/#/mission/level-01');
     await page.waitForTimeout(1500);
-    await page.locator('.submit-btn').click();
+    await page.getByRole('button', { name: 'Submit' }).click();
 
-    // Click replay
-    await page.locator('.modal-btn', { hasText: 'Replay' }).click();
+    await page.getByRole('button', { name: 'Replay' }).click();
 
-    // Modal should close
-    await expect(page.locator('.modal-overlay')).toHaveCount(0);
-    // Timer resets
-    await expect(page.locator('.timer')).toHaveText('0:00');
+    await expect(page.getByTestId('level-complete-modal')).toHaveCount(0);
+    await expect(page.getByTestId('timer')).toHaveText('0:00');
   });
 });
 
@@ -405,10 +391,9 @@ test.describe('Mission - CSS Persistence', () => {
       bestTimes: {},
     });
 
-    await page.goto('/mission/level-01');
+    await page.goto('/#/mission/level-01');
     await page.waitForTimeout(500);
 
-    // The saved CSS should be loaded in the editor
     const savedState = await page.evaluate(() => {
       const raw = localStorage.getItem('debugger-game-save');
       return raw ? JSON.parse(raw) : null;
