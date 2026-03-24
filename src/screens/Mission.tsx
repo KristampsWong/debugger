@@ -9,13 +9,14 @@ import { LivePreview } from '../components/LivePreview'
 import { TestPanel } from '../components/TestPanel'
 import { ClientBrief } from '../components/ClientBrief'
 import { LevelCompleteModal } from '../components/LevelCompleteModal'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 export function Mission() {
   const { levelId } = useParams<{ levelId: string }>()
   const navigate = useNavigate()
 
-  const { completedLevels, ownedTools, inProgressCSS, completeLevel, saveProgress } =
-    useGameStore()
+  const { ownedTools, completeLevel, saveProgress } = useGameStore()
   const {
     currentLevel,
     currentCSS,
@@ -29,12 +30,11 @@ export function Mission() {
     reset,
   } = useLevelStore()
 
-  const timerRef = useRef<ReturnType<typeof setInterval>>()
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined)
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const [showComplete, setShowComplete] = useState(false)
   const [wasAlreadyCompleted, setWasAlreadyCompleted] = useState(false)
 
-  // Load level on mount
   useEffect(() => {
     if (!levelId) return
     const level = getLevelById(levelId)
@@ -103,29 +103,29 @@ export function Mission() {
   const hasClientCall = ownedTools.includes('client-call')
 
   return (
-    <div className="mission-screen">
-      <div className="mission-topbar">
+    <div className="flex h-screen flex-col" data-testid="mission-screen">
+      <div className="flex items-center justify-between gap-4 border-b border-border bg-muted/50 px-4 py-2">
         <ClientBrief
           clientName={currentLevel.client.name}
           brief={currentLevel.client.brief}
           hintMessage={currentLevel.client.hintMessage}
           showHint={hasClientCall}
         />
-        <div className="mission-controls">
-          <span className="timer">
+        <div className="flex items-center gap-4">
+          <Badge variant="outline" data-testid="timer" className="font-mono text-base">
             {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
-          </span>
-          <button
-            className="submit-btn"
+          </Badge>
+          <Button
             disabled={!allPassed}
             onClick={handleSubmit}
+            className="bg-green-600 hover:bg-green-700"
           >
             Submit
-          </button>
+          </Button>
         </div>
       </div>
-      <div className="mission-workspace">
-        <div className="mission-left">
+      <div className="flex flex-1 overflow-hidden">
+        <div className="w-1/2 border-r border-border">
           <CodeEditor
             value={currentCSS}
             onChange={handleCSSChange}
@@ -134,7 +134,7 @@ export function Mission() {
             enableAutocomplete={hasAutocomplete}
           />
         </div>
-        <div className="mission-right">
+        <div className="flex w-1/2 flex-col">
           <LivePreview
             html={currentLevel.html}
             css={currentCSS}
