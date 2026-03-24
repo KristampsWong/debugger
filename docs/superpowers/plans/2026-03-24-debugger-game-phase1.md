@@ -6,7 +6,7 @@
 
 **Architecture:** React SPA with Monaco editor for CSS editing, sandboxed iframe for live preview, and a custom test runner that validates CSS fixes via `getComputedStyle`. Zustand manages game state with localStorage persistence. All levels are bundled static data — no backend.
 
-**Tech Stack:** React 18, TypeScript, Vite, Monaco Editor (`@monaco-editor/react`), Zustand, React Router v6, Vitest + React Testing Library
+**Tech Stack:** React 19, TypeScript, Vite, Monaco Editor (`@monaco-editor/react`), Zustand, React Router v6, Vitest + React Testing Library
 
 **Spec:** `docs/superpowers/specs/2026-03-24-debugger-game-design.md`
 
