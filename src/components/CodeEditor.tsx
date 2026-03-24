@@ -30,7 +30,7 @@ export function CodeEditor({
   }
 
   return (
-    <div className="code-editor">
+    <div className="h-full">
       <Editor
         height="100%"
         language="css"

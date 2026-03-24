@@ -24,14 +24,14 @@ export function LivePreview({ html, css, onIframeReady }: LivePreviewProps) {
   }, [html, css])
 
   return (
-    <div className="live-preview">
-      <h3>Preview</h3>
+    <div className="flex flex-1 flex-col border-b border-border">
+      <h3 className="bg-muted/50 px-3 py-2 text-sm text-muted-foreground">Preview</h3>
       <iframe
         ref={iframeRef}
         sandbox="allow-same-origin"
         title="Live Preview"
         onLoad={handleLoad}
-        className="preview-iframe"
+        className="w-full flex-1 border-none bg-white"
       />
     </div>
   )
