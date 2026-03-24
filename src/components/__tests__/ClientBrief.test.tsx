@@ -39,7 +39,6 @@ describe('ClientBrief', () => {
     render(
       <ClientBrief clientName="Bob" brief="Brief" showHint={true} />
     )
-    const hints = document.querySelectorAll('.hint-text')
-    expect(hints).toHaveLength(0)
+    expect(screen.queryByTestId('hint-text')).not.toBeInTheDocument()
   })
 })

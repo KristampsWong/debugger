@@ -11,63 +11,39 @@ describe('MainMenu', () => {
   })
 
   it('renders game title', () => {
-    render(
-      <MemoryRouter>
-        <MainMenu />
-      </MemoryRouter>
-    )
+    render(<MemoryRouter><MainMenu /></MemoryRouter>)
     expect(screen.getByText('Debugger')).toBeInTheDocument()
   })
 
   it('renders new game and continue buttons', () => {
-    render(
-      <MemoryRouter>
-        <MainMenu />
-      </MemoryRouter>
-    )
+    render(<MemoryRouter><MainMenu /></MemoryRouter>)
     expect(screen.getByRole('link', { name: /new game/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /continue/i })).toBeInTheDocument()
   })
 
   it('shows continue as disabled when no save exists', () => {
-    render(
-      <MemoryRouter>
-        <MainMenu />
-      </MemoryRouter>
-    )
+    render(<MemoryRouter><MainMenu /></MemoryRouter>)
     const continueBtn = screen.getByRole('link', { name: /continue/i })
-    expect(continueBtn).toHaveClass('disabled')
+    expect(continueBtn).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('shows continue as enabled when save exists', () => {
     useGameStore.getState().completeLevel('level-01', 100, 30)
-    render(
-      <MemoryRouter>
-        <MainMenu />
-      </MemoryRouter>
-    )
+    render(<MemoryRouter><MainMenu /></MemoryRouter>)
     const continueBtn = screen.getByRole('link', { name: /continue/i })
-    expect(continueBtn).not.toHaveClass('disabled')
+    expect(continueBtn).not.toHaveAttribute('aria-disabled', 'true')
   })
 
   it('resets game state when New Game is clicked', async () => {
     useGameStore.getState().completeLevel('level-01', 100, 30)
-    render(
-      <MemoryRouter>
-        <MainMenu />
-      </MemoryRouter>
-    )
+    render(<MemoryRouter><MainMenu /></MemoryRouter>)
     await userEvent.click(screen.getByRole('link', { name: /new game/i }))
     expect(useGameStore.getState().completedLevels).toEqual([])
     expect(useGameStore.getState().money).toBe(0)
   })
 
   it('renders subtitle text', () => {
-    render(
-      <MemoryRouter>
-        <MainMenu />
-      </MemoryRouter>
-    )
+    render(<MemoryRouter><MainMenu /></MemoryRouter>)
     expect(screen.getByText('Fix bugs. Get paid. Buy better tools.')).toBeInTheDocument()
   })
 })

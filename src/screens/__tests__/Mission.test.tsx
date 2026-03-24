@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { Mission } from '../Mission'
 import { useGameStore } from '../../store/gameStore'
@@ -85,14 +84,12 @@ describe('Mission', () => {
 
   it('renders test panel with level tests', () => {
     renderMission('level-01')
-    // Level 01 has test descriptions — check at least one exists
-    const testPanel = document.querySelector('.test-panel')
-    expect(testPanel).toBeInTheDocument()
+    expect(screen.getByTestId('test-panel')).toBeInTheDocument()
   })
 
   it('renders client brief', () => {
     renderMission('level-01')
-    expect(document.querySelector('.client-brief')).toBeInTheDocument()
+    expect(screen.getByTestId('client-brief')).toBeInTheDocument()
   })
 
   it('loads level-02 when prerequisites are met', () => {

@@ -29,9 +29,9 @@ describe('TestPanel', () => {
       { testId: 'test-2', passed: false, failedAssertion: 'font-weight mismatch' },
     ]
     render(<TestPanel tests={tests} results={results} showPropertyHints={false} />)
-    const items = screen.getAllByRole('listitem')
-    expect(items[0]).toHaveClass('passed')
-    expect(items[1]).toHaveClass('failed')
+    const items = screen.getAllByTestId('test-item')
+    expect(items[0]).toHaveAttribute('data-status', 'passed')
+    expect(items[1]).toHaveAttribute('data-status', 'failed')
   })
 
   it('shows property hints when enabled', () => {
