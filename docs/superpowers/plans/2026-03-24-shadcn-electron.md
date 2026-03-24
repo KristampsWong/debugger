@@ -248,7 +248,6 @@ export function MainMenu() {
           variant="outline"
           size="lg"
           className="px-12"
-          disabled={!hasSave}
         >
           <Link
             to="/board"
@@ -1552,7 +1551,7 @@ Add `"main"` field and scripts:
 Add scripts:
 
 ```json
-"electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
+"electron:dev": "tsc -p tsconfig.electron.json && concurrently \"vite\" \"wait-on http://localhost:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
 "electron:build": "tsc -b && vite build && tsc -p tsconfig.electron.json && electron-builder",
 "electron:preview": "vite build && tsc -p tsconfig.electron.json && electron ."
 ```
@@ -1716,6 +1715,6 @@ Expected: All e2e tests pass.
 - [ ] **Step 5: Commit any final fixes and tag**
 
 ```bash
-git add -A
+git add -u
 git commit -m "chore: final verification - all tests passing"
 ```
