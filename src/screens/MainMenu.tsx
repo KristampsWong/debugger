@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useGameStore } from '../store/gameStore'
+import { Button } from '@/components/ui/button'
 
 export function MainMenu() {
   const { completedLevels, resetGame } = useGameStore()
@@ -10,20 +11,33 @@ export function MainMenu() {
   }
 
   return (
-    <div className="main-menu">
-      <h1>Debugger</h1>
-      <p className="subtitle">Fix bugs. Get paid. Buy better tools.</p>
-      <nav className="menu-actions">
-        <Link to="/board" onClick={handleNewGame} className="menu-btn">
-          New Game
-        </Link>
-        <Link
-          to="/board"
-          className={`menu-btn ${!hasSave ? 'disabled' : ''}`}
-          onClick={(e) => !hasSave && e.preventDefault()}
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+      <h1 className="font-mono text-6xl font-bold text-primary">Debugger</h1>
+      <p className="mb-6 text-lg text-muted-foreground">
+        Fix bugs. Get paid. Buy better tools.
+      </p>
+      <nav className="flex flex-col gap-3">
+        <Button asChild size="lg" className="px-12">
+          <Link to="/board" onClick={handleNewGame}>
+            New Game
+          </Link>
+        </Button>
+        <Button
+          asChild
+          variant="outline"
+          size="lg"
+          className="px-12"
         >
-          Continue
-        </Link>
+          <Link
+            to="/board"
+            onClick={(e) => !hasSave && e.preventDefault()}
+            aria-disabled={!hasSave || undefined}
+            tabIndex={!hasSave ? -1 : undefined}
+            className={!hasSave ? 'pointer-events-none opacity-40' : ''}
+          >
+            Continue
+          </Link>
+        </Button>
       </nav>
     </div>
   )
