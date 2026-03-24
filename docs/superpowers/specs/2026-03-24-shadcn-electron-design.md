@@ -100,7 +100,9 @@ electron/
 
 ### Electron TypeScript Compilation
 
-Electron cannot execute `.ts` files directly. The main process files (`electron/main.ts`, `electron/preload.ts`) must be compiled to JavaScript before Electron can load them. Use `tsc` with a dedicated `tsconfig.electron.json` that outputs to `electron/dist/`. The `"main"` field in `package.json` points to `electron/dist/main.js`.
+Electron cannot execute `.ts` files directly. The main process files (`electron/main.ts`, `electron/preload.ts`) must be compiled to JavaScript before Electron can load them. Use `tsc` with a dedicated `tsconfig.electron.json` that outputs to `electron/dist/`.
+
+**`"type": "module"` conflict:** The project's `package.json` has `"type": "module"`, which causes Node.js/Electron to treat all `.js` files as ESM. To avoid conflicts, the Electron output files should use `.cjs` extension. Set `tsconfig.electron.json` to output CommonJS, and name the entry as `electron/dist/main.cjs`. The `"main"` field in `package.json` points to `electron/dist/main.cjs`.
 
 ### Behavior
 
@@ -142,15 +144,13 @@ Add a reasonable CSP meta tag in `index.html` since the app uses `iframe srcdoc`
 - Add `@tailwindcss/vite` plugin
 - Add `base: './'` for Electron `file://` compatibility
 
-### `tsconfig.node.json`
-- Add `electron/` to includes
-
 ### `tsconfig.electron.json` (new)
-- Compiles `electron/*.ts` to `electron/dist/*.js`
+- Compiles `electron/*.ts` to `electron/dist/*.cjs`
 - Target: ES2023, module: CommonJS (Electron main process uses CJS)
+- Output uses `.cjs` extension to avoid conflict with `"type": "module"` in `package.json`
 
 ### `package.json`
-- Add `"main": "electron/dist/main.js"` for Electron entry point
+- Add `"main": "electron/dist/main.cjs"` for Electron entry point
 - Add electron scripts
 - Add electron-builder build config
 
@@ -173,6 +173,8 @@ The shadcn migration breaks all tests that query by BEM class names. The scope i
 - `main-menu.spec.ts`, `client-board.spec.ts`, `mission.spec.ts`, `shop.spec.ts`, `full-flow.spec.ts`
 
 **Strategy:** Add `data-testid` attributes to key elements for stable test selectors. Use `getByRole`/`getByText` where semantic queries suffice. Use `data-testid` for structural queries (e.g., finding a specific level card). Update Playwright selectors to match.
+
+**Playwright URL assertions:** The switch to `HashRouter` changes all URL patterns from `/board` to `/#/board`, `/shop` to `/#/shop`, etc. All `page.goto()` calls and `toHaveURL()` assertions in e2e tests must be updated for hash-based routing.
 
 ### Files Deleted
 - `src/App.css`
