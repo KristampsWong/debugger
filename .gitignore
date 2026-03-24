@@ -23,6 +23,9 @@
 # production
 /build
 /dist
+/release
+electron/dist/
+!electron/dist/package.json
 
 # misc
 .DS_Store
