@@ -126,6 +126,47 @@ describe('runTests', () => {
     expect(results[1].passed).toBe(false)
   })
 
+  it('passes color assertions within tolerance', () => {
+    const tests: Test[] = [
+      {
+        id: 't1',
+        description: 'Close enough brown',
+        assertions: [{ selector: '.title', property: 'color', expected: 'rgb(139, 90, 43)' }],
+      },
+    ]
+    // rgb(120, 80, 30) is close to rgb(139, 90, 43) — distance ~24
+    const doc = createMockDoc({ '.title': { color: 'rgb(120, 80, 30)' } })
+    const results = runTests(tests, doc)
+    expect(results[0].passed).toBe(true)
+  })
+
+  it('fails color assertions outside tolerance', () => {
+    const tests: Test[] = [
+      {
+        id: 't1',
+        description: 'Way off color',
+        assertions: [{ selector: '.title', property: 'color', expected: 'rgb(139, 90, 43)' }],
+      },
+    ]
+    // rgb(255, 0, 0) is far from rgb(139, 90, 43) — distance ~143
+    const doc = createMockDoc({ '.title': { color: 'rgb(255, 0, 0)' } })
+    const results = runTests(tests, doc)
+    expect(results[0].passed).toBe(false)
+  })
+
+  it('uses strict matching for non-color properties', () => {
+    const tests: Test[] = [
+      {
+        id: 't1',
+        description: 'Exact display match',
+        assertions: [{ selector: '.box', property: 'display', expected: 'flex' }],
+      },
+    ]
+    const doc = createMockDoc({ '.box': { display: 'block' } })
+    const results = runTests(tests, doc)
+    expect(results[0].passed).toBe(false)
+  })
+
   it('returns empty array for empty tests', () => {
     const doc = createMockDoc({})
     const results = runTests([], doc)
