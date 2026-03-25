@@ -38,6 +38,9 @@ export interface TestResult {
   testId: string
   passed: boolean
   failedAssertion?: string
+  failureDetail?:
+    | { type: 'mismatch'; selector: string; property: string; expected: string; actual: string }
+    | { type: 'not-found'; selector: string }
 }
 
 export type ToolId =
@@ -47,6 +50,7 @@ export type ToolId =
   | 'solution-peek'
   | 'solution-preview'
   | 'css-reference'
+  | 'enhanced-errors'
   | 'client-call'
 
 export interface ShopItem {
@@ -105,6 +109,13 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'CSS Reference',
     description: 'Look up CSS property docs without leaving the game.',
     price: 75,
+    consumable: false,
+  },
+  {
+    id: 'enhanced-errors',
+    name: 'Enhanced Error Reports',
+    description: 'Visual diffs for failing tests and inline error markers in the editor.',
+    price: 200,
     consumable: false,
   },
 ]
