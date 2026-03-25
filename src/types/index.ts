@@ -45,6 +45,7 @@ export type ToolId =
   | 'bug-detector'
   | 'property-hint'
   | 'solution-peek'
+  | 'solution-preview'
   | 'client-call'
 
 export interface ShopItem {
@@ -89,6 +90,13 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Client Call',
     description: 'Reveals an extra hint from the client about what\'s wrong.',
     price: 50,
+    consumable: false,
+  },
+  {
+    id: 'solution-preview',
+    name: 'Solution Preview',
+    description: 'See the correct result side-by-side with your preview.',
+    price: 100,
     consumable: false,
   },
 ]
