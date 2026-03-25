@@ -110,6 +110,7 @@ export function Mission() {
   const hasClientCall = isToolActive('client-call')
   const hasSolutionPreview = isToolActive('solution-preview')
   const hasCSSReference = ownedTools.includes('css-reference')
+  const hasEnhancedErrors = ownedTools.includes('enhanced-errors')
 
   return (
     <div className="flex h-screen flex-col" data-testid="mission-screen">
@@ -150,6 +151,8 @@ export function Mission() {
             bugLines={currentLevel.bugLines}
             showBugDetector={hasBugDetector}
             enableAutocomplete={hasAutocomplete}
+            testResults={testResults}
+            hasEnhancedErrors={hasEnhancedErrors}
           />
           {hasCSSReference && (
             <CSSReferencePanel
@@ -183,6 +186,7 @@ export function Mission() {
                 tests={currentLevel.tests}
                 results={testResults}
                 showPropertyHints={hasPropertyHint}
+                showEnhancedErrors={hasEnhancedErrors}
               />
             </>
           ) : (
@@ -196,6 +200,7 @@ export function Mission() {
                 tests={currentLevel.tests}
                 results={testResults}
                 showPropertyHints={hasPropertyHint}
+                showEnhancedErrors={hasEnhancedErrors}
               />
             </>
           )}
