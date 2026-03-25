@@ -26,4 +26,21 @@ describe('buildSrcdoc', () => {
     const result = buildSrcdoc('', css)
     expect(result).toContain(css)
   })
+
+  it('does not include inspector script by default', () => {
+    const result = buildSrcdoc('<p>Hi</p>', 'p{}')
+    expect(result).not.toContain('__inspector__')
+  })
+
+  it('does not include inspector script when includeInspector is false', () => {
+    const result = buildSrcdoc('<p>Hi</p>', 'p{}', false)
+    expect(result).not.toContain('__inspector__')
+  })
+
+  it('includes inspector script when includeInspector is true', () => {
+    const result = buildSrcdoc('<p>Hi</p>', 'p{}', true)
+    expect(result).toContain('__inspector__')
+    expect(result).toContain('postMessage')
+    expect(result).toContain('<script>')
+  })
 })
