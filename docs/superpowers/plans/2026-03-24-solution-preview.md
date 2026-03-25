@@ -213,43 +213,52 @@ Then add the tool flag alongside the existing ones (after line 103):
   const hasSolutionPreview = ownedTools.includes('solution-preview')
 ```
 
-Then replace the right panel JSX (lines 137-148):
+Then replace the right panel JSX (lines 137-148).
+
+When `hasSolutionPreview` is false, the layout is identical to the original (no extra wrappers).
+When true, a flex-row container holds two equal-width LivePreviews. The wrapper divs use `flex flex-col` so LivePreview's `flex-1` works for height. Responsive: `flex-col min-[500px]:flex-row` stacks vertically on narrow viewports.
 
 ```tsx
         <div className="flex w-1/2 flex-col">
-          <div className={`flex flex-1 overflow-hidden ${hasSolutionPreview ? 'flex-row' : 'flex-col'}`}>
-            <div className={hasSolutionPreview ? 'w-1/2' : 'flex-1'}>
-              <LivePreview
-                html={currentLevel.html}
-                css={currentCSS}
-                onIframeReady={handleIframeReady}
-                label={hasSolutionPreview ? 'My Result' : undefined}
-              />
-            </div>
-            {hasSolutionPreview && (
-              <div className="w-1/2 border-l border-border">
-                <LivePreview
-                  html={currentLevel.html}
-                  css={currentLevel.solutionCSS}
-                  onIframeReady={NOOP}
-                  label="Correct Answer"
-                />
+          {hasSolutionPreview ? (
+            <>
+              <div className="flex flex-1 flex-col overflow-hidden min-[500px]:flex-row">
+                <div className="flex min-h-0 flex-1 flex-col min-[500px]:w-1/2 min-[500px]:flex-none">
+                  <LivePreview
+                    html={currentLevel.html}
+                    css={currentCSS}
+                    onIframeReady={handleIframeReady}
+                    label="My Result"
+                  />
+                </div>
+                <div className="flex min-h-0 flex-1 flex-col border-l border-border min-[500px]:w-1/2 min-[500px]:flex-none">
+                  <LivePreview
+                    html={currentLevel.html}
+                    css={currentLevel.solutionCSS}
+                    onIframeReady={NOOP}
+                    label="Correct Answer"
+                  />
+                </div>
               </div>
-            )}
-            {!hasSolutionPreview && (
               <TestPanel
                 tests={currentLevel.tests}
                 results={testResults}
                 showPropertyHints={hasPropertyHint}
               />
-            )}
-          </div>
-          {hasSolutionPreview && (
-            <TestPanel
-              tests={currentLevel.tests}
-              results={testResults}
-              showPropertyHints={hasPropertyHint}
-            />
+            </>
+          ) : (
+            <>
+              <LivePreview
+                html={currentLevel.html}
+                css={currentCSS}
+                onIframeReady={handleIframeReady}
+              />
+              <TestPanel
+                tests={currentLevel.tests}
+                results={testResults}
+                showPropertyHints={hasPropertyHint}
+              />
+            </>
           )}
         </div>
 ```
@@ -291,6 +300,16 @@ Add to `src/screens/__tests__/Shop.test.tsx`:
     )
     expect(screen.getByText('Solution Preview')).toBeInTheDocument()
     expect(screen.getByText(/side-by-side/)).toBeInTheDocument()
+  })
+
+  it('renders all 6 shop items', () => {
+    render(
+      <MemoryRouter>
+        <Shop />
+      </MemoryRouter>
+    )
+    const cards = screen.getAllByTestId('shop-card')
+    expect(cards).toHaveLength(6)
   })
 ```
 
