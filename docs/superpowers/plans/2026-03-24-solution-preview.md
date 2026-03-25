@@ -282,10 +282,11 @@ git commit -m "feat: add split-view solution preview to Mission screen"
 
 ---
 
-### Task 4: Add shop test for new item
+### Task 4: Add shop and e2e test updates
 
 **Files:**
 - Modify: `src/screens/__tests__/Shop.test.tsx`
+- Modify: `e2e/shop.spec.ts:17` (update card count from 5 to 6)
 
 - [ ] **Step 1: Add test for the new shop item**
 
@@ -313,16 +314,30 @@ Add to `src/screens/__tests__/Shop.test.tsx`:
   })
 ```
 
-- [ ] **Step 2: Run the test to verify it passes**
+- [ ] **Step 2: Update e2e shop test card count**
+
+In `e2e/shop.spec.ts` line 17, change:
+
+```typescript
+await expect(page.getByTestId('shop-card')).toHaveCount(5);
+```
+
+to:
+
+```typescript
+await expect(page.getByTestId('shop-card')).toHaveCount(6);
+```
+
+- [ ] **Step 3: Run the unit tests to verify they pass**
 
 Run: `npx vitest run src/screens/__tests__/Shop.test.tsx`
 Expected: All tests PASS (the item was already added in Task 1)
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/screens/__tests__/Shop.test.tsx
-git commit -m "test: add shop test for solution preview item"
+git add src/screens/__tests__/Shop.test.tsx e2e/shop.spec.ts
+git commit -m "test: add shop test for solution preview item, update e2e count"
 ```
 
 ---
