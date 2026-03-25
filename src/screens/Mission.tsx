@@ -18,7 +18,7 @@ export function Mission() {
   const { levelId } = useParams<{ levelId: string }>()
   const navigate = useNavigate()
 
-  const { ownedTools, completeLevel, saveProgress } = useGameStore()
+  const { ownedTools, disabledTools, completeLevel, saveProgress } = useGameStore()
   const {
     currentLevel,
     currentCSS,
@@ -44,13 +44,13 @@ export function Mission() {
       navigate('/board')
       return
     }
-    const { completedLevels: completed, inProgressCSS: saved } = useGameStore.getState()
+    const { completedLevels: completed, skippedLevels: skipped, inProgressCSS: saved } = useGameStore.getState()
     const unlocked = level.prerequisites.every((id) => completed.includes(id))
     if (!unlocked) {
       navigate('/board')
       return
     }
-    setWasAlreadyCompleted(completed.includes(levelId))
+    setWasAlreadyCompleted(completed.includes(levelId) && !skipped.includes(levelId))
     loadLevel(level, saved[levelId])
 
     timerRef.current = setInterval(() => tick(), 1000)
@@ -99,11 +99,14 @@ export function Mission() {
 
   if (!currentLevel) return null
 
-  const hasPropertyHint = ownedTools.includes('property-hint')
-  const hasBugDetector = ownedTools.includes('bug-detector')
-  const hasAutocomplete = ownedTools.includes('syntax-highlighter')
-  const hasClientCall = ownedTools.includes('client-call')
-  const hasSolutionPreview = ownedTools.includes('solution-preview')
+  const isToolActive = (id: string) =>
+    ownedTools.includes(id) && !disabledTools.includes(id)
+
+  const hasPropertyHint = isToolActive('property-hint')
+  const hasBugDetector = isToolActive('bug-detector')
+  const hasAutocomplete = isToolActive('syntax-highlighter')
+  const hasClientCall = isToolActive('client-call')
+  const hasSolutionPreview = isToolActive('solution-preview')
 
   return (
     <div className="flex h-screen flex-col" data-testid="mission-screen">
