@@ -5,9 +5,10 @@ interface LivePreviewProps {
   html: string
   css: string
   onIframeReady: (doc: Document) => void
+  label?: string
 }
 
-export function LivePreview({ html, css, onIframeReady }: LivePreviewProps) {
+export function LivePreview({ html, css, onIframeReady, label = 'Preview' }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const handleLoad = useCallback(() => {
@@ -25,7 +26,7 @@ export function LivePreview({ html, css, onIframeReady }: LivePreviewProps) {
 
   return (
     <div className="flex flex-1 flex-col border-b border-border">
-      <h3 className="bg-muted/50 px-3 py-2 text-sm text-muted-foreground">Preview</h3>
+      <h3 className="bg-muted/50 px-3 py-2 text-sm text-muted-foreground">{label}</h3>
       <iframe
         ref={iframeRef}
         sandbox="allow-same-origin"
