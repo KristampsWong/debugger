@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-24-steam-review-improvements-design.md`
 
+**Execution order:** This is **Plan 2 of 3** for the shop tool plans. Must run AFTER css-reference-panel plan and BEFORE style-inspector plan. Skip-level plan is independent and can run in parallel.
+
 ---
 
 ## File Structure
@@ -49,21 +51,11 @@ export interface TestResult {
 
 - [ ] **Step 2: Add `'enhanced-errors'` to `ToolId`**
 
-```typescript
-export type ToolId =
-  | 'syntax-highlighter'
-  | 'bug-detector'
-  | 'property-hint'
-  | 'solution-peek'
-  | 'solution-preview'
-  | 'css-reference'
-  | 'enhanced-errors'
-  | 'client-call'
-```
+Add `| 'enhanced-errors'` to the `ToolId` union, before `| 'client-call'`. (The union should already include `'css-reference'` from Plan 1.)
 
 - [ ] **Step 3: Add `SHOP_ITEMS` entry**
 
-Add after the `css-reference` entry:
+Add after the last non-`client-call` entry (should be `css-reference` from Plan 1):
 
 ```typescript
   {
@@ -234,7 +226,7 @@ Add to `src/components/__tests__/TestPanel.test.tsx`:
     it('shows expected and actual values when enhanced errors enabled', () => {
       render(
         <TestPanel
-          tests={sampleTests}
+          tests={tests}
           results={failedResults}
           showPropertyHints={false}
           showEnhancedErrors={true}
@@ -249,7 +241,7 @@ Add to `src/components/__tests__/TestPanel.test.tsx`:
     it('renders color swatches for color properties', () => {
       render(
         <TestPanel
-          tests={sampleTests}
+          tests={tests}
           results={failedResults}
           showPropertyHints={false}
           showEnhancedErrors={true}
@@ -262,7 +254,7 @@ Add to `src/components/__tests__/TestPanel.test.tsx`:
     it('does not show enhanced details when tool not owned', () => {
       render(
         <TestPanel
-          tests={sampleTests}
+          tests={tests}
           results={failedResults}
           showPropertyHints={false}
           showEnhancedErrors={false}
@@ -425,6 +417,7 @@ git commit -m "feat: add enhanced error display to TestPanel with color swatches
 In `src/components/CodeEditor.tsx`, update the interface and implementation:
 
 ```typescript
+import { useRef, useEffect } from 'react'
 import Editor from '@monaco-editor/react'
 import type { TestResult } from '../types'
 
@@ -446,7 +439,7 @@ function findPropertyLine(css: string, property: string, selector: string): numb
     if (line.endsWith('{')) {
       currentSelector = line.replace(/\s*\{$/, '').trim()
     }
-    if (line.includes(property + ':') || line.includes(property + ' :')) {
+    if (line.startsWith(property + ':') || line.startsWith(property + ' :')) {
       if (!selector || currentSelector.includes(selector.replace(/"/g, ''))) {
         return i + 1
       }
@@ -454,7 +447,8 @@ function findPropertyLine(css: string, property: string, selector: string): numb
   }
   // Fallback: find any line with the property
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes(property + ':') || lines[i].includes(property + ' :')) {
+    const trimmed = lines[i].trim()
+    if (trimmed.startsWith(property + ':') || trimmed.startsWith(property + ' :')) {
       return i + 1
     }
   }
@@ -470,7 +464,14 @@ export function CodeEditor({
   testResults = [],
   hasEnhancedErrors = false,
 }: CodeEditorProps) {
+  const editorRef = useRef<any>(null)
+  const monacoRef = useRef<any>(null)
+  const errorDecorationsRef = useRef<string[]>([])
+
   const handleEditorMount = (editor: any, monaco: any) => {
+    editorRef.current = editor
+    monacoRef.current = monaco
+
     if (showBugDetector && bugLines.length > 0) {
       const decorations = bugLines.map((line) => ({
         range: new monaco.Range(line, 1, line, 1),
@@ -482,31 +483,38 @@ export function CodeEditor({
       }))
       editor.deltaDecorations([], decorations)
     }
-
-    if (hasEnhancedErrors) {
-      const errorDecorations: any[] = []
-      for (const result of testResults) {
-        if (result.passed || !result.failureDetail) continue
-        if (result.failureDetail.type !== 'mismatch') continue
-        const { property, selector, expected, actual } = result.failureDetail
-        const line = findPropertyLine(value, property, selector)
-        if (line === null) continue
-        errorDecorations.push({
-          range: new monaco.Range(line, 1, line, 1000),
-          options: {
-            className: 'squiggly-error',
-            hoverMessage: {
-              value: `Expected \`${property}\` to be \`${expected}\` but got \`${actual}\``,
-            },
-            inlineClassName: 'squiggly-error-inline',
-          },
-        })
-      }
-      if (errorDecorations.length > 0) {
-        editor.deltaDecorations([], errorDecorations)
-      }
-    }
   }
+
+  // Live-update squiggly underlines when testResults change
+  useEffect(() => {
+    const editor = editorRef.current
+    const monaco = monacoRef.current
+    if (!editor || !monaco || !hasEnhancedErrors) {
+      if (editor && errorDecorationsRef.current.length > 0) {
+        errorDecorationsRef.current = editor.deltaDecorations(errorDecorationsRef.current, [])
+      }
+      return
+    }
+
+    const errorDecorations: any[] = []
+    for (const result of testResults) {
+      if (result.passed || !result.failureDetail) continue
+      if (result.failureDetail.type !== 'mismatch') continue
+      const { property, selector, expected, actual } = result.failureDetail
+      const line = findPropertyLine(value, property, selector)
+      if (line === null) continue
+      errorDecorations.push({
+        range: new monaco.Range(line, 1, line, 1000),
+        options: {
+          inlineClassName: 'squiggly-error-inline',
+          hoverMessage: {
+            value: `Expected \`${property}\` to be \`${expected}\` but got \`${actual}\``,
+          },
+        },
+      })
+    }
+    errorDecorationsRef.current = editor.deltaDecorations(errorDecorationsRef.current, errorDecorations)
+  }, [testResults, hasEnhancedErrors, value])
 
   return (
     <div className="h-full">
@@ -620,7 +628,7 @@ git commit -m "feat: wire enhanced-errors tool flag into Mission screen"
 
 - [ ] **Step 1: Update shop item count and add new test**
 
-Update the shop card count assertion from `6` to `8` (now includes css-reference + enhanced-errors).
+Update the shop card count assertion from `7` to `8` (Plan 1 set it to 7; now add 1 for enhanced-errors).
 
 Add:
 ```typescript

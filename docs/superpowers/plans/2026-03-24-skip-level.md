@@ -18,6 +18,7 @@
 |------|--------|----------------|
 | `src/store/gameStore.ts` | Modify | Add `skippedLevels`, `skipLevel` action, update `completeLevel`, migration |
 | `src/screens/ClientBoard.tsx` | Modify | Skip button, confirmation dialog, orange border |
+| `src/screens/Mission.tsx` | Modify | Fix `wasAlreadyCompleted` to exclude skipped levels |
 | `src/store/__tests__/gameStore.test.ts` | Modify | Tests for skip mechanics |
 | `src/screens/__tests__/ClientBoard.test.tsx` | Modify | Tests for skip UI |
 
@@ -310,6 +311,37 @@ Add to `src/screens/__tests__/ClientBoard.test.tsx`:
     )
     expect(screen.getByText('Replay')).toBeInTheDocument()
   })
+
+  it('opens confirmation dialog and skips level on confirm', () => {
+    useGameStore.setState({ money: 500 })
+    render(
+      <MemoryRouter>
+        <ClientBoard />
+      </MemoryRouter>
+    )
+    fireEvent.click(screen.getAllByTestId('skip-button')[0])
+    expect(screen.getByText('Skip Level?')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Skip'))
+    const state = useGameStore.getState()
+    expect(state.skippedLevels).toContain('level-01')
+    expect(state.money).toBe(300) // 500 - 200 (2x $100 payout)
+  })
+
+  it('closes confirmation dialog on cancel without skipping', () => {
+    useGameStore.setState({ money: 500 })
+    render(
+      <MemoryRouter>
+        <ClientBoard />
+      </MemoryRouter>
+    )
+    fireEvent.click(screen.getAllByTestId('skip-button')[0])
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(useGameStore.getState().skippedLevels).not.toContain('level-01')
+    expect(useGameStore.getState().money).toBe(500)
+  })
+```
+
+Add `fireEvent` to the existing testing-library import if not already present.
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -471,4 +503,53 @@ Expected: All pass
 ```bash
 git add src/screens/ClientBoard.tsx src/screens/__tests__/ClientBoard.test.tsx
 git commit -m "feat: add skip level UI to ClientBoard with confirmation dialog"
+```
+
+---
+
+### Task 3: Fix Mission.tsx wasAlreadyCompleted for skipped levels
+
+**Files:**
+- Modify: `src/screens/Mission.tsx:47-53`
+
+When a player enters a previously-skipped level to solve it, `wasAlreadyCompleted` is set to `true` (because skipped levels ARE in `completedLevels`). This causes `LevelCompleteModal` to show "Already completed" instead of the payout. Fix this by checking `skippedLevels`.
+
+- [ ] **Step 1: Fix the wasAlreadyCompleted logic**
+
+In `src/screens/Mission.tsx`, update the `useEffect` (around line 47-53). Change:
+
+```typescript
+    const { completedLevels: completed, inProgressCSS: saved } = useGameStore.getState()
+```
+
+to:
+
+```typescript
+    const { completedLevels: completed, skippedLevels: skipped, inProgressCSS: saved } = useGameStore.getState()
+```
+
+And change:
+
+```typescript
+    setWasAlreadyCompleted(completed.includes(levelId))
+```
+
+to:
+
+```typescript
+    setWasAlreadyCompleted(completed.includes(levelId) && !skipped.includes(levelId))
+```
+
+This way, skipped levels are treated as "not yet completed" for payout display purposes, even though they're in `completedLevels` for prerequisite unlocking.
+
+- [ ] **Step 2: Run full test suite**
+
+Run: `npx vitest run && npx tsc --noEmit`
+Expected: All pass
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/screens/Mission.tsx
+git commit -m "fix: show payout in LevelCompleteModal when solving previously-skipped level"
 ```

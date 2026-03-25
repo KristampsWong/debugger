@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-24-steam-review-improvements-design.md`
 
+**Execution order:** This is **Plan 1 of 3** for the shop tool plans. Must run BEFORE enhanced-error-reports and style-inspector plans (they depend on types/SHOP_ITEMS changes made here). Skip-level plan is independent and can run in parallel.
+
 ---
 
 ## File Structure
@@ -124,6 +126,12 @@ export const cssReference: CSSPropertyRef[] = [
     example: 'border-radius: 8px;',
   },
   {
+    property: 'border-top-left-radius',
+    description: 'Rounds the top-left corner of an element.',
+    values: ['0', '4px', '50%'],
+    example: 'border-top-left-radius: 8px;',
+  },
+  {
     property: 'color',
     description: 'Sets the text color of an element.',
     values: ['inherit', 'red', '#333', 'rgb(0,0,0)'],
@@ -232,6 +240,18 @@ export const cssReference: CSSPropertyRef[] = [
     example: 'margin: 0 auto;',
   },
   {
+    property: 'margin-bottom',
+    description: 'Sets the bottom outer spacing of an element.',
+    values: ['0', '10px', '1rem', 'auto'],
+    example: 'margin-bottom: 16px;',
+  },
+  {
+    property: 'margin-right',
+    description: 'Sets the right outer spacing of an element.',
+    values: ['0', '10px', '1rem', 'auto'],
+    example: 'margin-right: 8px;',
+  },
+  {
     property: 'max-width',
     description: 'Sets the maximum width of an element.',
     values: ['none', '100%', '600px', '80vw'],
@@ -256,10 +276,40 @@ export const cssReference: CSSPropertyRef[] = [
     example: 'overflow: hidden;',
   },
   {
+    property: 'overflow-x',
+    description: 'Controls horizontal overflow behavior independently.',
+    values: ['visible', 'hidden', 'scroll', 'auto'],
+    example: 'overflow-x: hidden;',
+  },
+  {
     property: 'padding',
     description: 'Sets the inner spacing of an element (shorthand).',
     values: ['0', '10px', '10px 20px', '10px 20px 30px 40px'],
     example: 'padding: 16px;',
+  },
+  {
+    property: 'padding-bottom',
+    description: 'Sets the bottom inner spacing of an element.',
+    values: ['0', '10px', '1rem'],
+    example: 'padding-bottom: 16px;',
+  },
+  {
+    property: 'padding-left',
+    description: 'Sets the left inner spacing of an element.',
+    values: ['0', '10px', '1rem'],
+    example: 'padding-left: 16px;',
+  },
+  {
+    property: 'padding-right',
+    description: 'Sets the right inner spacing of an element.',
+    values: ['0', '10px', '1rem'],
+    example: 'padding-right: 16px;',
+  },
+  {
+    property: 'padding-top',
+    description: 'Sets the top inner spacing of an element.',
+    values: ['0', '10px', '1rem'],
+    example: 'padding-top: 16px;',
   },
   {
     property: 'position',
@@ -389,6 +439,13 @@ describe('CSSReferencePanel', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it('calls onClose when backdrop is clicked', () => {
+    const onClose = vi.fn()
+    render(<CSSReferencePanel open={true} onClose={onClose} />)
+    fireEvent.click(screen.getByTestId('css-reference-backdrop'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })
 ```
 
@@ -429,10 +486,16 @@ export function CSSReferencePanel({ open, onClose }: CSSReferencePanelProps) {
     : cssReference
 
   return (
-    <div
-      className="absolute inset-y-0 right-0 z-10 flex w-[300px] flex-col border-l border-border bg-background shadow-lg"
-      data-testid="css-reference-panel"
-    >
+    <>
+      <div
+        className="absolute inset-0 z-10 bg-black/20"
+        onClick={onClose}
+        data-testid="css-reference-backdrop"
+      />
+      <div
+        className="absolute inset-y-0 right-0 z-20 flex w-[300px] flex-col border-l border-border bg-background shadow-lg"
+        data-testid="css-reference-panel"
+      >
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <h3 className="text-sm font-medium">CSS Reference</h3>
         <button
@@ -467,6 +530,7 @@ export function CSSReferencePanel({ open, onClose }: CSSReferencePanelProps) {
         </ul>
       </div>
     </div>
+    </>
   )
 }
 ```
@@ -527,7 +591,7 @@ Add state and tool flag after existing tool flags (line 106):
   const [showReference, setShowReference] = useState(false)
 ```
 
-Add `useState` to the existing React import on line 1.
+`useState` is already imported on line 1 — no change needed.
 
 In the editor area (`<div className="w-1/2 border-r border-border">`), wrap the content to add the toggle button and panel. Replace the editor div (lines 131-139):
 
@@ -609,9 +673,21 @@ Expected: All tests PASS
 Run: `npx vitest run && npx tsc --noEmit`
 Expected: All pass
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Update e2e shop tests**
+
+In `e2e/shop.spec.ts`:
+- Line 17: change `toHaveCount(6)` to `toHaveCount(7)`
+- Line 22: add `'CSS Reference'` to the names array
+- Line 30: add `'$75'` to the prices array
+
+- [ ] **Step 5: Run full test suite + type check**
+
+Run: `npx vitest run && npx tsc --noEmit`
+Expected: All pass
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/screens/__tests__/Shop.test.tsx
-git commit -m "test: update shop tests for CSS Reference tool"
+git add src/screens/__tests__/Shop.test.tsx e2e/shop.spec.ts
+git commit -m "test: update shop and e2e tests for CSS Reference tool"
 ```

@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-03-24-steam-review-improvements-design.md`
 
+**Execution order:** This is **Plan 3 of 3** for the shop tool plans. Must run AFTER both css-reference-panel and enhanced-error-reports plans. Skip-level plan is independent and can run in parallel.
+
 ---
 
 ## File Structure
@@ -20,7 +22,8 @@
 | `src/engine/cssInjector.ts` | Modify | Add `includeInspector` param, inject script conditionally |
 | `src/components/LivePreview.tsx` | Modify | Accept `hasStyleInspector`, conditional sandbox, forward to buildSrcdoc |
 | `src/components/StyleDetailsPanel.tsx` | Create | Pinned element style display panel |
-| `src/screens/Mission.tsx` | Modify | Add tool flag, state for inspected styles, pass props |
+| `src/components/StyleInspectorOverlay.tsx` | Create | Hover tooltip overlay for inspector |
+| `src/screens/Mission.tsx` | Modify | Add tool flag, state for hover/pinned styles, event.source validation, pass props |
 | `src/engine/__tests__/cssInjector.test.ts` | Modify | Test script injection |
 | `src/components/__tests__/LivePreview.test.tsx` | Modify | Test conditional sandbox |
 | `src/components/__tests__/StyleDetailsPanel.test.tsx` | Create | Test style display |
@@ -35,17 +38,7 @@
 
 - [ ] **Step 1: Add `'style-inspector'` to `ToolId`**
 
-```typescript
-export type ToolId =
-  | 'syntax-highlighter'
-  | 'bug-detector'
-  | 'property-hint'
-  | 'solution-peek'
-  | 'solution-preview'
-  | 'css-reference'
-  | 'enhanced-errors'
-  | 'style-inspector'
-  | 'client-call'
+Add `| 'style-inspector'` to the `ToolId` union before `| 'client-call'`. (The union should already include `'css-reference'` and `'enhanced-errors'` from Plans 1 and 2.)
 ```
 
 - [ ] **Step 2: Add `SHOP_ITEMS` entry**
@@ -122,6 +115,7 @@ const INSPECTOR_SCRIPT = `
 <script>
 (function __inspector__() {
   let pinned = null;
+  let lastHovered = null;
   const PROPS = [
     'color','background-color','display','position',
     'padding','margin','font-size','font-weight',
@@ -147,13 +141,18 @@ const INSPECTOR_SCRIPT = `
     if (pinned) return;
     var t = e.target;
     if (t === document.body || t === document.documentElement) return;
+    if (lastHovered && lastHovered !== t) {
+      lastHovered.classList.remove('__inspector_outline__');
+    }
     t.classList.add('__inspector_outline__');
+    lastHovered = t;
     parent.postMessage({ type: 'inspector-hover', selector: getSelector(t), styles: getStyles(t), x: e.clientX, y: e.clientY }, '*');
   });
 
   document.addEventListener('mouseout', function(e) {
     if (pinned) return;
     e.target.classList.remove('__inspector_outline__');
+    lastHovered = null;
     parent.postMessage({ type: 'inspector-hover-end' }, '*');
   });
 
@@ -446,18 +445,74 @@ git commit -m "feat: add StyleDetailsPanel component for pinned element styles"
 
 ---
 
-### Task 5: Integrate Style Inspector into Mission screen
+### Task 5: Create StyleInspectorOverlay component for hover tooltips
+
+**Files:**
+- Create: `src/components/StyleInspectorOverlay.tsx`
+
+- [ ] **Step 1: Create the hover tooltip component**
+
+Create `src/components/StyleInspectorOverlay.tsx`:
+
+```typescript
+interface HoverData {
+  selector: string
+  styles: Record<string, string>
+  x: number
+  y: number
+}
+
+interface StyleInspectorOverlayProps {
+  hoverData: HoverData | null
+}
+
+export function StyleInspectorOverlay({ hoverData }: StyleInspectorOverlayProps) {
+  if (!hoverData) return null
+
+  const PREVIEW_PROPS = ['display', 'color', 'background-color', 'padding', 'margin', 'font-size', 'position']
+
+  return (
+    <div
+      data-testid="inspector-tooltip"
+      className="pointer-events-none absolute z-30 rounded border border-border bg-background p-2 shadow-lg"
+      style={{ left: hoverData.x + 12, top: hoverData.y + 12, maxWidth: 260 }}
+    >
+      <div className="mb-1 font-mono text-xs font-bold text-blue-400">{hoverData.selector}</div>
+      <ul className="flex flex-col gap-0.5">
+        {PREVIEW_PROPS.map((prop) => (
+          <li key={prop} className="flex justify-between gap-3 text-xs">
+            <span className="font-mono text-muted-foreground">{prop}</span>
+            <span className="font-mono">{hoverData.styles[prop] ?? ''}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/components/StyleInspectorOverlay.tsx
+git commit -m "feat: add StyleInspectorOverlay component for hover tooltips"
+```
+
+---
+
+### Task 6: Integrate Style Inspector into Mission screen
 
 **Files:**
 - Modify: `src/screens/Mission.tsx`
 
-- [ ] **Step 1: Add state, tool flag, and message listener**
+- [ ] **Step 1: Add state, tool flag, refs, and message listener with event.source validation**
 
 In `src/screens/Mission.tsx`:
 
-Add import:
+Add imports:
 ```typescript
 import { StyleDetailsPanel } from '../components/StyleDetailsPanel'
+import { StyleInspectorOverlay } from '../components/StyleInspectorOverlay'
 ```
 
 Add tool flag after existing flags:
@@ -465,19 +520,32 @@ Add tool flag after existing flags:
   const hasStyleInspector = ownedTools.includes('style-inspector')
 ```
 
-Add state for pinned element:
+Add a ref to the player's preview iframe (needed for event.source validation). Add this ref:
 ```typescript
+  const previewIframeRef = useRef<HTMLIFrameElement>(null)
+```
+
+Add state for hover and pinned data:
+```typescript
+  const [hoverData, setHoverData] = useState<{ selector: string; styles: Record<string, string>; x: number; y: number } | null>(null)
   const [pinnedStyles, setPinnedStyles] = useState<{ selector: string; styles: Record<string, string> } | null>(null)
 ```
 
-Add a `useEffect` for listening to postMessage from the iframe:
+Add a `useEffect` for listening to postMessage with **event.source validation**:
 ```typescript
   useEffect(() => {
     if (!hasStyleInspector) return
     const handleMessage = (e: MessageEvent) => {
+      // Security: only accept messages from our preview iframe
+      if (previewIframeRef.current && e.source !== previewIframeRef.current.contentWindow) return
       if (!e.data || typeof e.data.type !== 'string') return
-      if (e.data.type === 'inspector-pin') {
+      if (e.data.type === 'inspector-hover') {
+        setHoverData({ selector: e.data.selector, styles: e.data.styles, x: e.data.x, y: e.data.y })
+      } else if (e.data.type === 'inspector-hover-end') {
+        setHoverData(null)
+      } else if (e.data.type === 'inspector-pin') {
         setPinnedStyles({ selector: e.data.selector, styles: e.data.styles })
+        setHoverData(null)
       } else if (e.data.type === 'inspector-unpin') {
         setPinnedStyles(null)
       }
@@ -487,7 +555,11 @@ Add a `useEffect` for listening to postMessage from the iframe:
   }, [hasStyleInspector])
 ```
 
-Pass `hasStyleInspector` to all LivePreview instances. For the player's preview:
+- [ ] **Step 2: Pass `hasStyleInspector` and `iframeRef` to LivePreview**
+
+Pass `hasStyleInspector` to the player's LivePreview in **BOTH** branches (normal and split-view):
+
+For the non-split-view branch:
 ```tsx
 <LivePreview
   html={currentLevel.html}
@@ -497,10 +569,33 @@ Pass `hasStyleInspector` to all LivePreview instances. For the player's preview:
 />
 ```
 
-Note: Do NOT pass `hasStyleInspector` to the solution preview LivePreview (spec says inspector only works on player's preview).
+For the split-view (`hasSolutionPreview`) branch — add `hasStyleInspector` ONLY to the "My Result" preview, NOT the "Correct Answer" preview:
+```tsx
+<LivePreview
+  html={currentLevel.html}
+  css={currentCSS}
+  onIframeReady={handleIframeReady}
+  label="My Result"
+  hasStyleInspector={hasStyleInspector}
+/>
+```
 
-Add StyleDetailsPanel below the preview area, before or inside TestPanel's parent. Insert it after the LivePreview (or after the split-view container) but before TestPanel:
+To get the iframe ref out of LivePreview for event.source validation, update LivePreview to accept an optional `iframeRef` prop. In `LivePreview.tsx`, add to the interface:
+```typescript
+  iframeRef?: React.RefObject<HTMLIFrameElement | null>
+```
+And use it: `const ref = iframeRef ?? localRef` (rename the existing `iframeRef` to `localRef`). Then pass `iframeRef={previewIframeRef}` from Mission to the player's LivePreview.
 
+- [ ] **Step 3: Add overlay and details panel to the JSX**
+
+Add the hover overlay inside the preview area (needs `relative` positioning on the preview container):
+```tsx
+{hasStyleInspector && (
+  <StyleInspectorOverlay hoverData={hoverData} />
+)}
+```
+
+Add the details panel before TestPanel:
 ```tsx
 {hasStyleInspector && (
   <StyleDetailsPanel
@@ -511,33 +606,33 @@ Add StyleDetailsPanel below the preview area, before or inside TestPanel's paren
 )}
 ```
 
-- [ ] **Step 2: Run full test suite**
+- [ ] **Step 4: Run full test suite**
 
 Run: `npx vitest run`
 Expected: All tests PASS
 
-- [ ] **Step 3: Run type check**
+- [ ] **Step 5: Run type check**
 
 Run: `npx tsc --noEmit`
 Expected: No errors
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/screens/Mission.tsx
-git commit -m "feat: integrate Style Inspector into Mission screen"
+git add src/screens/Mission.tsx src/components/LivePreview.tsx
+git commit -m "feat: integrate Style Inspector with hover overlay and event.source validation"
 ```
 
 ---
 
-### Task 6: Update shop tests
+### Task 7: Update shop tests
 
 **Files:**
 - Modify: `src/screens/__tests__/Shop.test.tsx`
 
 - [ ] **Step 1: Update shop item count and add test**
 
-Update shop card count assertion from `8` to `9` (adding style-inspector).
+Update shop card count assertion from `8` to `9` (Plan 2 set it to 8; now add 1 for style-inspector).
 
 Add:
 ```typescript
