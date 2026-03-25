@@ -46,6 +46,7 @@ export type ToolId =
   | 'property-hint'
   | 'solution-peek'
   | 'solution-preview'
+  | 'css-reference'
   | 'client-call'
 
 export interface ShopItem {
@@ -97,6 +98,13 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Solution Preview',
     description: 'See the correct result side-by-side with your preview.',
     price: 100,
+    consumable: false,
+  },
+  {
+    id: 'css-reference',
+    name: 'CSS Reference',
+    description: 'Look up CSS property docs without leaving the game.',
+    price: 75,
     consumable: false,
   },
 ]
