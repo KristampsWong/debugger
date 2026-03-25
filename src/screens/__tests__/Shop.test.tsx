@@ -113,7 +113,7 @@ describe('Shop', () => {
       </MemoryRouter>
     )
     const cards = screen.getAllByTestId('shop-card')
-    expect(cards).toHaveLength(7)
+    expect(cards).toHaveLength(8)
   })
 
   it('renders CSS Reference item in shop', () => {
@@ -124,5 +124,15 @@ describe('Shop', () => {
     )
     expect(screen.getByText('CSS Reference')).toBeInTheDocument()
     expect(screen.getByText(/Look up CSS property docs/)).toBeInTheDocument()
+  })
+
+  it('renders Enhanced Error Reports item in shop', () => {
+    render(
+      <MemoryRouter>
+        <Shop />
+      </MemoryRouter>
+    )
+    expect(screen.getByText('Enhanced Error Reports')).toBeInTheDocument()
+    expect(screen.getByText(/Visual diffs/)).toBeInTheDocument()
   })
 })
