@@ -51,6 +51,7 @@ export type ToolId =
   | 'solution-preview'
   | 'css-reference'
   | 'enhanced-errors'
+  | 'style-inspector'
   | 'client-call'
 
 export interface ShopItem {
@@ -116,6 +117,13 @@ export const SHOP_ITEMS: ShopItem[] = [
     name: 'Enhanced Error Reports',
     description: 'Visual diffs for failing tests and inline error markers in the editor.',
     price: 200,
+    consumable: false,
+  },
+  {
+    id: 'style-inspector',
+    name: 'Style Inspector',
+    description: 'Hover and click elements in the preview to see their computed styles.',
+    price: 250,
     consumable: false,
   },
 ]
