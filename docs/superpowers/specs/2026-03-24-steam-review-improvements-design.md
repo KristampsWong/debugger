@@ -33,6 +33,12 @@ A collapsible sidebar panel on the Mission screen with searchable CSS property d
 - Each entry: property name, one-line description, common values, mini example
 - Panel starts collapsed to avoid crowding the Mission layout
 
+### Layout
+- The panel renders as a slide-over overlay anchored to the right edge of the editor area (left half of Mission)
+- It does NOT change the 50/50 editor/preview split — it overlays on top of the editor when open
+- Panel width: ~300px with a semi-transparent backdrop
+- Clicking outside or pressing Escape closes it
+
 ### Integration
 - New `ToolId`: `'css-reference'`
 - Mission checks `ownedTools.includes('css-reference')` to render the toggle button
@@ -73,16 +79,16 @@ Upgrades test failure feedback in two ways: an expanded TestPanel with visual di
 - Heuristic-based — sufficient for the structured CSS in these levels
 
 ### Data Changes
-- Change `TestResult.failedAssertion` from `string` to a structured object:
+- Keep `TestResult.failedAssertion` as `string` for backward compatibility
+- Add a new optional field `failureDetail` to `TestResult`:
   ```typescript
-  {
-    selector: string
-    property: string
-    expected: string
-    actual: string
-  }
+  failureDetail?:
+    | { type: 'mismatch'; selector: string; property: string; expected: string; actual: string }
+    | { type: 'not-found'; selector: string }
   ```
-- TestPanel and CodeEditor both consume the enriched results
+- `testRunner.ts` populates `failureDetail` on every failure (always available), while `failedAssertion` string remains unchanged
+- TestPanel and CodeEditor consume `failureDetail` when `hasEnhancedErrors` is true; otherwise they ignore it
+- This is fully backward compatible — all existing code consuming the string field continues to work
 
 ### Integration
 - New `ToolId`: `'enhanced-errors'`
@@ -92,11 +98,11 @@ Upgrades test failure feedback in two ways: an expanded TestPanel with visual di
 ### Files Affected
 | File | Action |
 |------|--------|
-| `src/types/index.ts` | Add `'enhanced-errors'` to `ToolId`, add `SHOP_ITEMS` entry, update `TestResult` type |
-| `src/engine/testRunner.ts` | Return structured failure object instead of string |
-| `src/components/TestPanel.tsx` | Expand failed tests with visual diff, color swatches |
-| `src/components/CodeEditor.tsx` | Add squiggly underline decorations for failing lines |
-| `src/screens/Mission.tsx` | Add tool flag, pass to components |
+| `src/types/index.ts` | Add `'enhanced-errors'` to `ToolId`, add `SHOP_ITEMS` entry, add `failureDetail` to `TestResult` |
+| `src/engine/testRunner.ts` | Populate `failureDetail` on failures (keep `failedAssertion` string unchanged) |
+| `src/components/TestPanel.tsx` | Expand failed tests with visual diff, color swatches when `hasEnhancedErrors` |
+| `src/components/CodeEditor.tsx` | Add `testResults` prop + squiggly underline decorations for failing lines |
+| `src/screens/Mission.tsx` | Add tool flag, pass `hasEnhancedErrors` and `testResults` to components |
 
 ---
 
@@ -121,8 +127,11 @@ Lets players inspect computed styles on elements in the preview iframe. Hover fo
 - Inject a small script (~40 lines) into LivePreview iframe's `srcdoc`
 - Script listens for `mouseover`, `mouseout`, `click` events
 - Uses `postMessage` to send computed style data to parent window
-- Requires adding `allow-scripts` to iframe sandbox (alongside existing `allow-same-origin`)
-- Parent-side components listen for messages and render tooltip/panel
+- Conditionally adds `allow-scripts` to iframe sandbox ONLY when `hasStyleInspector` is true (alongside existing `allow-same-origin`). When the tool is not owned, the sandbox remains `allow-same-origin` only.
+- Parent-side `message` event listener must validate `event.source === iframeRef.current.contentWindow` before processing messages (security: prevents cross-frame message spoofing)
+- The injected inspector script must NOT alter computed styles of user elements — it only adds transient outline styles via a dedicated class that does not affect tested CSS properties. Test execution via `handleIframeReady` runs on the initial DOM load before inspector interactions.
+
+**Security note:** `allow-same-origin` + `allow-scripts` is generally dangerous, but safe here because srcdoc content is entirely application-controlled (HTML from level files + CSS from `<style>` tags). The CSS editor cannot inject `<script>` tags.
 
 ### Integration
 - New `ToolId`: `'style-inspector'`
@@ -140,7 +149,7 @@ Lets players inspect computed styles on elements in the preview iframe. Hover fo
 |------|--------|
 | `src/types/index.ts` | Add `'style-inspector'` to `ToolId`, add `SHOP_ITEMS` entry |
 | `src/engine/cssInjector.ts` | Conditionally inject inspector script into srcdoc |
-| `src/components/LivePreview.tsx` | Accept `hasStyleInspector` prop, forward to buildSrcdoc |
+| `src/components/LivePreview.tsx` | Accept `hasStyleInspector` prop, conditionally set sandbox to `allow-same-origin allow-scripts`, forward flag to buildSrcdoc |
 | `src/components/StyleInspectorOverlay.tsx` | Create — hover tooltip component |
 | `src/components/StyleDetailsPanel.tsx` | Create — pinned style details panel |
 | `src/screens/Mission.tsx` | Add tool flag, pass to LivePreview |
@@ -162,17 +171,25 @@ Players pay 2x the level's payout to skip it and unlock dependent levels. Always
 - Skipped levels remain playable — solving later awards the full payout and removes the skipped status
 
 ### Pricing
+Skip cost is always 2x the level's payout (computed dynamically, not hardcoded per level):
+
 | Level | Payout | Skip Cost (2x) |
 |-------|--------|-----------------|
 | Level 1 | $100 | $200 |
+| Level 2 | $150 | $300 |
 | Level 3 | $200 | $400 |
+| Level 4 | $200 | $400 |
 | Level 5 | $300 | $600 |
-| Level 8 | $500 | $1,000 |
+| Level 6 | $300 | $600 |
+| Level 7 | $400 | $800 |
+| Level 8 | $400 | $800 |
 
 ### Data Changes
-- Add `skippedLevels: string[]` to `GameState`
+- Add `skippedLevels: string[]` to `GameState` (default `[]` in `initialState`)
 - New action: `skipLevel(levelId, cost)` — deducts cost, adds to `completedLevels` and `skippedLevels`
-- Modify `completeLevel`: if level is in `skippedLevels`, remove it from `skippedLevels` and award payout
+- Modify `completeLevel`: if level is in `skippedLevels`, bypass the `alreadyCompleted` guard — award the payout, remove from `skippedLevels`, keep in `completedLevels`
+- Modify `resetGame`: clear `skippedLevels` (add to `initialState`)
+- **localStorage migration:** Zustand's `persist` middleware does a shallow merge on hydration, so existing saves without `skippedLevels` will get `undefined`. Add a `version` and `migrate` function to the persist config that defaults missing `skippedLevels` to `[]`
 
 ### Files Affected
 | File | Action |
@@ -196,6 +213,23 @@ Each tool gets tests for:
 | Enhanced Error Reports | Structured failure data returned, color swatches render, squiggly decorations applied, hidden when not owned |
 | Style Inspector | postMessage communication works, hover tooltip renders, click pins element, hidden when not owned |
 | Skip Level | Skip button visible with sufficient funds, hidden with insufficient funds, level marked as skipped, solving skipped level removes skip status and awards payout |
+
+## Test File Updates
+
+All new and modified test files across the 4 features:
+
+| Test File | Action | What to Test |
+|-----------|--------|--------------|
+| `src/components/__tests__/CSSReferencePanel.test.tsx` | Create | Panel renders, search filters, entries display correctly |
+| `src/components/__tests__/StyleInspectorOverlay.test.tsx` | Create | Hover tooltip renders from postMessage data |
+| `src/components/__tests__/StyleDetailsPanel.test.tsx` | Create | Pinned element styles display grouped by category |
+| `src/engine/__tests__/testRunner.test.ts` | Modify | Verify `failureDetail` populated on failures (existing string assertions unchanged) |
+| `src/components/__tests__/TestPanel.test.tsx` | Modify | Enhanced error display with color swatches and value diffs |
+| `src/components/__tests__/CodeEditor.test.tsx` | Create/Modify | Squiggly underline decorations applied from testResults |
+| `src/store/__tests__/gameStore.test.ts` | Modify | `skipLevel` action, modified `completeLevel` for skipped levels, `resetGame` clears skippedLevels |
+| `src/screens/__tests__/ClientBoard.test.tsx` | Modify | Skip button rendering, confirmation dialog, insufficient funds |
+| `src/screens/__tests__/Shop.test.tsx` | Modify | Update item count from 6 to 9 (3 new tools) |
+| `src/screens/__tests__/Mission.test.tsx` | Modify | New tool flags for css-reference, enhanced-errors, style-inspector |
 
 ## Scope Exclusions
 
