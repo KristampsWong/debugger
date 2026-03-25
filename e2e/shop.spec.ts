@@ -14,12 +14,12 @@ test.beforeEach(async ({ page }) => {
 test.describe('Shop - Display', () => {
   test('shows all 6 shop items', async ({ page }) => {
     await page.goto('/#/shop');
-    await expect(page.getByTestId('shop-card')).toHaveCount(6);
+    await expect(page.getByTestId('shop-card')).toHaveCount(7);
   });
 
   test('displays correct item names', async ({ page }) => {
     await page.goto('/#/shop');
-    const names = ['Syntax Highlighter+', 'Bug Detector', 'Property Hint', 'Solution Peek', 'Client Call', 'Solution Preview'];
+    const names = ['Syntax Highlighter+', 'Bug Detector', 'Property Hint', 'Solution Peek', 'Client Call', 'Solution Preview', 'CSS Reference'];
     for (const name of names) {
       await expect(page.getByTestId('shop-card').filter({ hasText: name }).locator('h3')).toBeVisible();
     }
@@ -27,7 +27,7 @@ test.describe('Shop - Display', () => {
 
   test('displays correct prices', async ({ page }) => {
     await page.goto('/#/shop');
-    const prices = ['$50', '$150', '$150', '$100', '$50', '$100'];
+    const prices = ['$50', '$150', '$150', '$100', '$50', '$100', '$75'];
     const priceElements = page.getByTestId('item-price');
     for (let i = 0; i < prices.length; i++) {
       await expect(priceElements.nth(i)).toContainText(prices[i]);

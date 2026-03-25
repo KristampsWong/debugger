@@ -113,6 +113,16 @@ describe('Shop', () => {
       </MemoryRouter>
     )
     const cards = screen.getAllByTestId('shop-card')
-    expect(cards).toHaveLength(6)
+    expect(cards).toHaveLength(7)
+  })
+
+  it('renders CSS Reference item in shop', () => {
+    render(
+      <MemoryRouter>
+        <Shop />
+      </MemoryRouter>
+    )
+    expect(screen.getByText('CSS Reference')).toBeInTheDocument()
+    expect(screen.getByText(/Look up CSS property docs/)).toBeInTheDocument()
   })
 })
