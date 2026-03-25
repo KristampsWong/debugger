@@ -19,7 +19,7 @@ test.describe('Shop - Display', () => {
 
   test('displays correct item names', async ({ page }) => {
     await page.goto('/#/shop');
-    const names = ['Syntax Highlighter+', 'Bug Detector', 'Property Hint', 'Solution Peek', 'Client Call'];
+    const names = ['Syntax Highlighter+', 'Bug Detector', 'Property Hint', 'Solution Peek', 'Client Call', 'Solution Preview'];
     for (const name of names) {
       await expect(page.getByTestId('shop-card').filter({ hasText: name }).locator('h3')).toBeVisible();
     }
@@ -27,7 +27,7 @@ test.describe('Shop - Display', () => {
 
   test('displays correct prices', async ({ page }) => {
     await page.goto('/#/shop');
-    const prices = ['$50', '$150', '$150', '$100', '$50'];
+    const prices = ['$50', '$150', '$150', '$100', '$50', '$100'];
     const priceElements = page.getByTestId('item-price');
     for (let i = 0; i < prices.length; i++) {
       await expect(priceElements.nth(i)).toContainText(prices[i]);
