@@ -46,6 +46,7 @@ export function runTests(tests: Test[], doc: Document): TestResult[] {
           testId: test.id,
           passed: false,
           failedAssertion: `"${assertion.selector}" — element not found`,
+          failureDetail: { type: 'not-found' as const, selector: assertion.selector },
         }
       }
 
@@ -57,6 +58,13 @@ export function runTests(tests: Test[], doc: Document): TestResult[] {
           testId: test.id,
           passed: false,
           failedAssertion: `"${assertion.selector}" ${assertion.property}: expected "${assertion.expected}", got "${actual}"`,
+          failureDetail: {
+            type: 'mismatch' as const,
+            selector: assertion.selector,
+            property: assertion.property,
+            expected: assertion.expected,
+            actual,
+          },
         }
       }
     }

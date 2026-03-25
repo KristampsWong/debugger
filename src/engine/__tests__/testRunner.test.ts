@@ -172,4 +172,54 @@ describe('runTests', () => {
     const results = runTests([], doc)
     expect(results).toEqual([])
   })
+
+  describe('failureDetail', () => {
+    it('populates not-found detail when element is missing', () => {
+      const tests: Test[] = [
+        {
+          id: 't1',
+          description: 'test',
+          assertions: [{ selector: '.missing', property: 'color', expected: 'red' }],
+        },
+      ]
+      const doc = createMockDoc({})
+      const results = runTests(tests, doc)
+      expect(results[0].failureDetail).toEqual({
+        type: 'not-found',
+        selector: '.missing',
+      })
+    })
+
+    it('populates mismatch detail when value does not match', () => {
+      const tests: Test[] = [
+        {
+          id: 't1',
+          description: 'test',
+          assertions: [{ selector: 'p', property: 'color', expected: 'rgb(255, 0, 0)' }],
+        },
+      ]
+      const doc = createMockDoc({ p: { color: 'rgb(0, 0, 0)' } })
+      const results = runTests(tests, doc)
+      expect(results[0].failureDetail).toEqual({
+        type: 'mismatch',
+        selector: 'p',
+        property: 'color',
+        expected: 'rgb(255, 0, 0)',
+        actual: 'rgb(0, 0, 0)',
+      })
+    })
+
+    it('does not populate failureDetail when test passes', () => {
+      const tests: Test[] = [
+        {
+          id: 't1',
+          description: 'test',
+          assertions: [{ selector: 'p', property: 'color', expected: 'rgb(255, 0, 0)' }],
+        },
+      ]
+      const doc = createMockDoc({ p: { color: 'rgb(255, 0, 0)' } })
+      const results = runTests(tests, doc)
+      expect(results[0].failureDetail).toBeUndefined()
+    })
+  })
 })
