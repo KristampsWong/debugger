@@ -27,7 +27,7 @@ describe('Shop', () => {
         <Shop />
       </MemoryRouter>
     )
-    expect(screen.getByText('$200')).toBeInTheDocument()
+    expect(screen.getByTestId('money')).toHaveTextContent('$200')
   })
 
   it('disables buy button when not enough money', () => {
@@ -113,7 +113,7 @@ describe('Shop', () => {
       </MemoryRouter>
     )
     const cards = screen.getAllByTestId('shop-card')
-    expect(cards).toHaveLength(8)
+    expect(cards).toHaveLength(9)
   })
 
   it('renders CSS Reference item in shop', () => {
@@ -134,5 +134,15 @@ describe('Shop', () => {
     )
     expect(screen.getByText('Enhanced Error Reports')).toBeInTheDocument()
     expect(screen.getByText(/Visual diffs/)).toBeInTheDocument()
+  })
+
+  it('renders Style Inspector item in shop', () => {
+    render(
+      <MemoryRouter>
+        <Shop />
+      </MemoryRouter>
+    )
+    expect(screen.getByText('Style Inspector')).toBeInTheDocument()
+    expect(screen.getByText(/computed styles/)).toBeInTheDocument()
   })
 })
