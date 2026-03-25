@@ -138,3 +138,8 @@
   margin-left: 4px;
   margin-top: 6px;
 }
+
+.squiggly-error-inline {
+  text-decoration: wavy underline red;
+  text-decoration-skip-ink: none;
+}
