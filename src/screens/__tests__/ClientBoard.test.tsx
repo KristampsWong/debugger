@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { ClientBoard } from '../ClientBoard'
 import { useGameStore } from '../../store/gameStore'
@@ -83,5 +83,93 @@ describe('ClientBoard', () => {
   it('renders menu link', () => {
     render(<MemoryRouter><ClientBoard /></MemoryRouter>)
     expect(screen.getByRole('link', { name: /menu/i })).toBeInTheDocument()
+  })
+
+  it('shows skip button for unlocked, incomplete levels when player can afford', () => {
+    useGameStore.setState({ money: 500 })
+    render(
+      <MemoryRouter>
+        <ClientBoard />
+      </MemoryRouter>
+    )
+    // Level 1 is unlocked and not completed
+    const skipButtons = screen.getAllByText(/Skip/)
+    expect(skipButtons.length).toBeGreaterThan(0)
+  })
+
+  it('does not show skip button for completed levels', () => {
+    useGameStore.setState({ money: 500, completedLevels: ['level-01'] })
+    render(
+      <MemoryRouter>
+        <ClientBoard />
+      </MemoryRouter>
+    )
+    const level1Card = screen.getAllByTestId('level-card')[0]
+    expect(level1Card.querySelector('[data-testid="skip-button"]')).not.toBeInTheDocument()
+  })
+
+  it('does not show skip button when player cannot afford', () => {
+    useGameStore.setState({ money: 0 })
+    render(
+      <MemoryRouter>
+        <ClientBoard />
+      </MemoryRouter>
+    )
+    expect(screen.queryByTestId('skip-button')).not.toBeInTheDocument()
+  })
+
+  it('shows orange border for skipped levels', () => {
+    useGameStore.setState({
+      completedLevels: ['level-01'],
+      skippedLevels: ['level-01'],
+    })
+    render(
+      <MemoryRouter>
+        <ClientBoard />
+      </MemoryRouter>
+    )
+    const cards = screen.getAllByTestId('level-card')
+    expect(cards[0].className).toContain('border-orange-500')
+  })
+
+  it('shows Replay button for skipped levels (they are completedLevels too)', () => {
+    useGameStore.setState({
+      completedLevels: ['level-01'],
+      skippedLevels: ['level-01'],
+    })
+    render(
+      <MemoryRouter>
+        <ClientBoard />
+      </MemoryRouter>
+    )
+    expect(screen.getByText('Replay')).toBeInTheDocument()
+  })
+
+  it('opens confirmation dialog and skips level on confirm', () => {
+    useGameStore.setState({ money: 500 })
+    render(
+      <MemoryRouter>
+        <ClientBoard />
+      </MemoryRouter>
+    )
+    fireEvent.click(screen.getAllByTestId('skip-button')[0])
+    expect(screen.getByText('Skip Level?')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Skip'))
+    const state = useGameStore.getState()
+    expect(state.skippedLevels).toContain('level-01')
+    expect(state.money).toBe(300) // 500 - 200 (2x $100 payout)
+  })
+
+  it('closes confirmation dialog on cancel without skipping', () => {
+    useGameStore.setState({ money: 500 })
+    render(
+      <MemoryRouter>
+        <ClientBoard />
+      </MemoryRouter>
+    )
+    fireEvent.click(screen.getAllByTestId('skip-button')[0])
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(useGameStore.getState().skippedLevels).not.toContain('level-01')
+    expect(useGameStore.getState().money).toBe(500)
   })
 })
