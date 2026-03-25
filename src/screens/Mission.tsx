@@ -12,6 +12,8 @@ import { LevelCompleteModal } from '../components/LevelCompleteModal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CSSReferencePanel } from '../components/CSSReferencePanel'
+import { StyleDetailsPanel } from '../components/StyleDetailsPanel'
+import { StyleInspectorOverlay } from '../components/StyleInspectorOverlay'
 
 const NOOP = () => {}
 
@@ -38,6 +40,10 @@ export function Mission() {
   const [showComplete, setShowComplete] = useState(false)
   const [wasAlreadyCompleted, setWasAlreadyCompleted] = useState(false)
   const [showReference, setShowReference] = useState(false)
+  const previewIframeRef = useRef<HTMLIFrameElement>(null)
+  const [hoverData, setHoverData] = useState<{ selector: string; styles: Record<string, string>; x: number; y: number } | null>(null)
+  const [pinnedStyles, setPinnedStyles] = useState<{ selector: string; styles: Record<string, string> } | null>(null)
+  const hasStyleInspector = ownedTools.includes('style-inspector')
 
   useEffect(() => {
     if (!levelId) return
@@ -98,6 +104,27 @@ export function Mission() {
     loadLevel(currentLevel)
     timerRef.current = setInterval(() => tick(), 1000)
   }
+
+  useEffect(() => {
+    if (!hasStyleInspector) return
+    const handleMessage = (e: MessageEvent) => {
+      // Security: only accept messages from our preview iframe
+      if (previewIframeRef.current && e.source !== previewIframeRef.current.contentWindow) return
+      if (!e.data || typeof e.data.type !== 'string') return
+      if (e.data.type === 'inspector-hover') {
+        setHoverData({ selector: e.data.selector, styles: e.data.styles, x: e.data.x, y: e.data.y })
+      } else if (e.data.type === 'inspector-hover-end') {
+        setHoverData(null)
+      } else if (e.data.type === 'inspector-pin') {
+        setPinnedStyles({ selector: e.data.selector, styles: e.data.styles })
+        setHoverData(null)
+      } else if (e.data.type === 'inspector-unpin') {
+        setPinnedStyles(null)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [hasStyleInspector])
 
   if (!currentLevel) return null
 
@@ -161,7 +188,10 @@ export function Mission() {
             />
           )}
         </div>
-        <div className="flex w-1/2 flex-col">
+        <div className="relative flex w-1/2 flex-col">
+          {hasStyleInspector && (
+            <StyleInspectorOverlay hoverData={hoverData} />
+          )}
           {hasSolutionPreview ? (
             <>
               <div className="flex flex-1 flex-col overflow-hidden min-[500px]:flex-row">
@@ -171,6 +201,8 @@ export function Mission() {
                     css={currentCSS}
                     onIframeReady={handleIframeReady}
                     label="My Result"
+                    hasStyleInspector={hasStyleInspector}
+                    iframeRef={previewIframeRef}
                   />
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col border-l border-border min-[500px]:w-1/2 min-[500px]:flex-none">
@@ -182,6 +214,13 @@ export function Mission() {
                   />
                 </div>
               </div>
+              {hasStyleInspector && (
+                <StyleDetailsPanel
+                  selector={pinnedStyles?.selector ?? null}
+                  styles={pinnedStyles?.styles ?? null}
+                  onClose={() => setPinnedStyles(null)}
+                />
+              )}
               <TestPanel
                 tests={currentLevel.tests}
                 results={testResults}
@@ -195,7 +234,16 @@ export function Mission() {
                 html={currentLevel.html}
                 css={currentCSS}
                 onIframeReady={handleIframeReady}
+                hasStyleInspector={hasStyleInspector}
+                iframeRef={previewIframeRef}
               />
+              {hasStyleInspector && (
+                <StyleDetailsPanel
+                  selector={pinnedStyles?.selector ?? null}
+                  styles={pinnedStyles?.styles ?? null}
+                  onClose={() => setPinnedStyles(null)}
+                />
+              )}
               <TestPanel
                 tests={currentLevel.tests}
                 results={testResults}
