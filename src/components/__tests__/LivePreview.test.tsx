@@ -19,4 +19,16 @@ describe('LivePreview', () => {
     expect(screen.getByText('My Result')).toBeInTheDocument()
     expect(screen.queryByText('Preview')).not.toBeInTheDocument()
   })
+
+  it('uses allow-same-origin sandbox by default', () => {
+    render(<LivePreview {...defaultProps} />)
+    const iframe = document.querySelector('iframe')
+    expect(iframe?.getAttribute('sandbox')).toBe('allow-same-origin')
+  })
+
+  it('adds allow-scripts to sandbox when hasStyleInspector is true', () => {
+    render(<LivePreview {...defaultProps} hasStyleInspector={true} />)
+    const iframe = document.querySelector('iframe')
+    expect(iframe?.getAttribute('sandbox')).toBe('allow-same-origin allow-scripts')
+  })
 })
