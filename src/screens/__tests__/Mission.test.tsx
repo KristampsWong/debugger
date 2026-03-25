@@ -119,4 +119,15 @@ describe('Mission', () => {
     expect(screen.getByText('My Result')).toBeInTheDocument()
     expect(screen.getByText('Correct Answer')).toBeInTheDocument()
   })
+
+  it('does not show reference button when css-reference tool is not owned', () => {
+    renderMission('level-01')
+    expect(screen.queryByLabelText('Open CSS reference')).not.toBeInTheDocument()
+  })
+
+  it('shows reference button when css-reference tool is owned', () => {
+    useGameStore.setState({ ownedTools: ['css-reference'] })
+    renderMission('level-01')
+    expect(screen.getByLabelText('Open CSS reference')).toBeInTheDocument()
+  })
 })

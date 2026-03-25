@@ -11,6 +11,7 @@ import { ClientBrief } from '../components/ClientBrief'
 import { LevelCompleteModal } from '../components/LevelCompleteModal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { CSSReferencePanel } from '../components/CSSReferencePanel'
 
 const NOOP = () => {}
 
@@ -36,6 +37,7 @@ export function Mission() {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const [showComplete, setShowComplete] = useState(false)
   const [wasAlreadyCompleted, setWasAlreadyCompleted] = useState(false)
+  const [showReference, setShowReference] = useState(false)
 
   useEffect(() => {
     if (!levelId) return
@@ -107,6 +109,7 @@ export function Mission() {
   const hasAutocomplete = isToolActive('syntax-highlighter')
   const hasClientCall = isToolActive('client-call')
   const hasSolutionPreview = isToolActive('solution-preview')
+  const hasCSSReference = ownedTools.includes('css-reference')
 
   return (
     <div className="flex h-screen flex-col" data-testid="mission-screen">
@@ -131,7 +134,16 @@ export function Mission() {
         </div>
       </div>
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-1/2 border-r border-border">
+        <div className="relative w-1/2 border-r border-border">
+          {hasCSSReference && (
+            <button
+              onClick={() => setShowReference(!showReference)}
+              aria-label="Open CSS reference"
+              className="absolute right-2 top-2 z-20 rounded bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              📖 Ref
+            </button>
+          )}
           <CodeEditor
             value={currentCSS}
             onChange={handleCSSChange}
@@ -139,6 +151,12 @@ export function Mission() {
             showBugDetector={hasBugDetector}
             enableAutocomplete={hasAutocomplete}
           />
+          {hasCSSReference && (
+            <CSSReferencePanel
+              open={showReference}
+              onClose={() => setShowReference(false)}
+            />
+          )}
         </div>
         <div className="flex w-1/2 flex-col">
           {hasSolutionPreview ? (
