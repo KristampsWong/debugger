@@ -97,4 +97,26 @@ describe('Mission', () => {
     renderMission('level-02')
     expect(screen.getByText('Flex Fitness')).toBeInTheDocument()
   })
+
+  it('renders single preview when solution-preview tool is not owned', () => {
+    renderMission('level-01')
+    const previews = screen.getAllByTitle('Live Preview')
+    expect(previews).toHaveLength(1)
+  })
+
+  it('renders two previews side-by-side when solution-preview tool is owned', () => {
+    useGameStore.getState().completeLevel('level-01', 200, 30)
+    useGameStore.setState({ ownedTools: ['solution-preview'] })
+    renderMission('level-01')
+    const previews = screen.getAllByTitle('Live Preview')
+    expect(previews).toHaveLength(2)
+  })
+
+  it('shows "My Result" and "Correct Answer" labels when solution-preview is owned', () => {
+    useGameStore.getState().completeLevel('level-01', 200, 30)
+    useGameStore.setState({ ownedTools: ['solution-preview'] })
+    renderMission('level-01')
+    expect(screen.getByText('My Result')).toBeInTheDocument()
+    expect(screen.getByText('Correct Answer')).toBeInTheDocument()
+  })
 })

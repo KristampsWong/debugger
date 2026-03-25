@@ -12,6 +12,8 @@ import { LevelCompleteModal } from '../components/LevelCompleteModal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
+const NOOP = () => {}
+
 export function Mission() {
   const { levelId } = useParams<{ levelId: string }>()
   const navigate = useNavigate()
@@ -101,6 +103,7 @@ export function Mission() {
   const hasBugDetector = ownedTools.includes('bug-detector')
   const hasAutocomplete = ownedTools.includes('syntax-highlighter')
   const hasClientCall = ownedTools.includes('client-call')
+  const hasSolutionPreview = ownedTools.includes('solution-preview')
 
   return (
     <div className="flex h-screen flex-col" data-testid="mission-screen">
@@ -135,16 +138,46 @@ export function Mission() {
           />
         </div>
         <div className="flex w-1/2 flex-col">
-          <LivePreview
-            html={currentLevel.html}
-            css={currentCSS}
-            onIframeReady={handleIframeReady}
-          />
-          <TestPanel
-            tests={currentLevel.tests}
-            results={testResults}
-            showPropertyHints={hasPropertyHint}
-          />
+          {hasSolutionPreview ? (
+            <>
+              <div className="flex flex-1 flex-col overflow-hidden min-[500px]:flex-row">
+                <div className="flex min-h-0 flex-1 flex-col min-[500px]:w-1/2 min-[500px]:flex-none">
+                  <LivePreview
+                    html={currentLevel.html}
+                    css={currentCSS}
+                    onIframeReady={handleIframeReady}
+                    label="My Result"
+                  />
+                </div>
+                <div className="flex min-h-0 flex-1 flex-col border-l border-border min-[500px]:w-1/2 min-[500px]:flex-none">
+                  <LivePreview
+                    html={currentLevel.html}
+                    css={currentLevel.solutionCSS}
+                    onIframeReady={NOOP}
+                    label="Correct Answer"
+                  />
+                </div>
+              </div>
+              <TestPanel
+                tests={currentLevel.tests}
+                results={testResults}
+                showPropertyHints={hasPropertyHint}
+              />
+            </>
+          ) : (
+            <>
+              <LivePreview
+                html={currentLevel.html}
+                css={currentCSS}
+                onIframeReady={handleIframeReady}
+              />
+              <TestPanel
+                tests={currentLevel.tests}
+                results={testResults}
+                showPropertyHints={hasPropertyHint}
+              />
+            </>
+          )}
         </div>
       </div>
       {showComplete && (
