@@ -95,4 +95,24 @@ describe('Shop', () => {
     await userEvent.click(buyButtons[0])
     expect(useGameStore.getState().money).toBeLessThan(500)
   })
+
+  it('renders Solution Preview item in shop', () => {
+    render(
+      <MemoryRouter>
+        <Shop />
+      </MemoryRouter>
+    )
+    expect(screen.getByText('Solution Preview')).toBeInTheDocument()
+    expect(screen.getByText(/side-by-side/)).toBeInTheDocument()
+  })
+
+  it('renders all 6 shop items', () => {
+    render(
+      <MemoryRouter>
+        <Shop />
+      </MemoryRouter>
+    )
+    const cards = screen.getAllByTestId('shop-card')
+    expect(cards).toHaveLength(6)
+  })
 })

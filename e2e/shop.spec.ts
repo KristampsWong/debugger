@@ -12,9 +12,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('Shop - Display', () => {
-  test('shows all 5 shop items', async ({ page }) => {
+  test('shows all 6 shop items', async ({ page }) => {
     await page.goto('/#/shop');
-    await expect(page.getByTestId('shop-card')).toHaveCount(5);
+    await expect(page.getByTestId('shop-card')).toHaveCount(6);
   });
 
   test('displays correct item names', async ({ page }) => {
