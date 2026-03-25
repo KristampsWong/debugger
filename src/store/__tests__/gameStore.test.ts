@@ -127,4 +127,72 @@ describe('gameStore', () => {
       expect(state.bestTimes).toEqual({})
     })
   })
+
+  describe('skipLevel', () => {
+    it('deducts cost and marks level as completed and skipped', () => {
+      const { skipLevel } = useGameStore.getState()
+      useGameStore.setState({ money: 500 })
+      skipLevel('level-01', 200)
+      const state = useGameStore.getState()
+      expect(state.money).toBe(300)
+      expect(state.completedLevels).toContain('level-01')
+      expect(state.skippedLevels).toContain('level-01')
+    })
+
+    it('does not skip when insufficient funds', () => {
+      const { skipLevel } = useGameStore.getState()
+      useGameStore.setState({ money: 50 })
+      skipLevel('level-01', 200)
+      const state = useGameStore.getState()
+      expect(state.money).toBe(50)
+      expect(state.completedLevels).not.toContain('level-01')
+      expect(state.skippedLevels).not.toContain('level-01')
+    })
+
+    it('does not skip already completed level', () => {
+      useGameStore.setState({ money: 500, completedLevels: ['level-01'] })
+      const { skipLevel } = useGameStore.getState()
+      skipLevel('level-01', 200)
+      const state = useGameStore.getState()
+      expect(state.money).toBe(500)
+      expect(state.skippedLevels).not.toContain('level-01')
+    })
+  })
+
+  describe('completeLevel with skipped levels', () => {
+    it('awards payout when solving a previously skipped level', () => {
+      useGameStore.setState({
+        money: 100,
+        completedLevels: ['level-01'],
+        skippedLevels: ['level-01'],
+      })
+      const { completeLevel } = useGameStore.getState()
+      completeLevel('level-01', 100, 45)
+      const state = useGameStore.getState()
+      expect(state.money).toBe(200)
+      expect(state.skippedLevels).not.toContain('level-01')
+      expect(state.completedLevels).toContain('level-01')
+      expect(state.bestTimes['level-01']).toBe(45)
+    })
+
+    it('updates best time when solving skipped level', () => {
+      useGameStore.setState({
+        money: 0,
+        completedLevels: ['level-01'],
+        skippedLevels: ['level-01'],
+        bestTimes: {},
+      })
+      const { completeLevel } = useGameStore.getState()
+      completeLevel('level-01', 100, 30)
+      expect(useGameStore.getState().bestTimes['level-01']).toBe(30)
+    })
+  })
+
+  describe('resetGame with skippedLevels', () => {
+    it('clears skippedLevels on reset', () => {
+      useGameStore.setState({ skippedLevels: ['level-01', 'level-02'] })
+      useGameStore.getState().resetGame()
+      expect(useGameStore.getState().skippedLevels).toEqual([])
+    })
+  })
 })
