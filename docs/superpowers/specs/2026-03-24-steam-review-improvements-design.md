@@ -148,7 +148,7 @@ Lets players inspect computed styles on elements in the preview iframe. Hover fo
 | File | Action |
 |------|--------|
 | `src/types/index.ts` | Add `'style-inspector'` to `ToolId`, add `SHOP_ITEMS` entry |
-| `src/engine/cssInjector.ts` | Conditionally inject inspector script into srcdoc |
+| `src/engine/cssInjector.ts` | Add optional `includeInspector?: boolean` param to `buildSrcdoc`; conditionally inject inspector script into srcdoc when true. Existing callers without the flag continue to work unchanged. |
 | `src/components/LivePreview.tsx` | Accept `hasStyleInspector` prop, conditionally set sandbox to `allow-same-origin allow-scripts`, forward flag to buildSrcdoc |
 | `src/components/StyleInspectorOverlay.tsx` | Create — hover tooltip component |
 | `src/components/StyleDetailsPanel.tsx` | Create — pinned style details panel |
@@ -194,9 +194,8 @@ Skip cost is always 2x the level's payout (computed dynamically, not hardcoded p
 ### Files Affected
 | File | Action |
 |------|--------|
-| `src/store/gameStore.ts` | Add `skippedLevels` state, `skipLevel` action, update `completeLevel` |
-| `src/screens/ClientBoard.tsx` | Add skip button, confirmation dialog, orange border styling |
-| `src/types/index.ts` | Update `GameState` type if defined there |
+| `src/store/gameStore.ts` | Add `skippedLevels` to `GameState` interface (defined here, not in types/index.ts), add `skipLevel` action, update `completeLevel` to handle skipped levels (award payout + update bestTimes), update `resetGame`, add persist migration |
+| `src/screens/ClientBoard.tsx` | Add skip button, confirmation dialog, orange border styling. Skip is NOT available from within the Mission screen. |
 
 ---
 
@@ -223,6 +222,8 @@ All new and modified test files across the 4 features:
 | `src/components/__tests__/CSSReferencePanel.test.tsx` | Create | Panel renders, search filters, entries display correctly |
 | `src/components/__tests__/StyleInspectorOverlay.test.tsx` | Create | Hover tooltip renders from postMessage data |
 | `src/components/__tests__/StyleDetailsPanel.test.tsx` | Create | Pinned element styles display grouped by category |
+| `src/components/__tests__/LivePreview.test.tsx` | Modify | Sandbox attribute changes to `allow-same-origin allow-scripts` when `hasStyleInspector` is true |
+| `src/engine/__tests__/cssInjector.test.ts` | Modify | `buildSrcdoc` includes inspector script when `includeInspector` flag is true, excludes when false/omitted |
 | `src/engine/__tests__/testRunner.test.ts` | Modify | Verify `failureDetail` populated on failures (existing string assertions unchanged) |
 | `src/components/__tests__/TestPanel.test.tsx` | Modify | Enhanced error display with color swatches and value diffs |
 | `src/components/__tests__/CodeEditor.test.tsx` | Create/Modify | Squiggly underline decorations applied from testResults |
